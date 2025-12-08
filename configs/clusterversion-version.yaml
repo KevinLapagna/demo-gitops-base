@@ -1,0 +1,8 @@
+﻿apiVersion: config.openshift.io/v1
+kind: ClusterVersion
+metadata:
+  name: version
+spec:
+  channel: stable-4.20
+  desiredUpdate:
+    version: 4.20.5
