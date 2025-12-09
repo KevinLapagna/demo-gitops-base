@@ -2,6 +2,8 @@
 kind: Namespace
 metadata:
   name: aap
+  labels:
+    argocd.argoproj.io/managed-by: openshift-gitops
 ---
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup

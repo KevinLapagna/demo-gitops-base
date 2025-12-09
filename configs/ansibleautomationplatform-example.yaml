@@ -3,13 +3,24 @@ kind: AnsibleAutomationPlatform
 metadata:
   name: aap-01
   namespace: aap
-# spec:
-#   route_tls_termination_mechanism: Edge
-#   no_log: true
-#   redis_mode: standalone
-#   api:
-#     log_level: INFO
-#     replicas: 1
-#   database:
-#     postgres_data_volume_init: false
-#     idle_disabled: false
+spec:
+  # database:
+  #   resource_requirements:
+  #     requests:
+  #       cpu: 200m
+  #       memory: 512Mi
+  #   storage_requirements:
+  #     requests:
+  #       storage: 100Gi
+
+  controller:
+    disabled: false
+
+  eda:
+    disabled: true
+
+  hub:
+    disabled: true
+  #   storage_type: file
+  #   file_storage_storage_class: <read-write-many-storage-class>
+  #   file_storage_size: 10Gi
