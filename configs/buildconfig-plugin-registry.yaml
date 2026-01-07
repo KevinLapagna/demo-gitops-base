@@ -1,0 +1,33 @@
+﻿kind: BuildConfig
+apiVersion: build.openshift.io/v1
+metadata:
+  name: plugin-registry
+  namespace: aap-self-service
+spec:
+  # nodeSelector: null
+  output:
+    to:
+      kind: ImageStreamTag
+      name: 'plugin-registry:latest'
+  # resources: {}
+  # successfulBuildsHistoryLimit: 5
+  # failedBuildsHistoryLimit: 5
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        namespace: openshift
+        name: 'httpd:2.4-ubi9'
+  # postCommit: {}
+  # source:
+  #   type: Binary
+  #   binary: {}
+  # triggers:
+  #   - type: GitHub
+  #     github:
+  #       secret: 9CzLt7GgCXeyXRt70BfU
+  #   - type: Generic
+  #     generic:
+  #       secret: ssLfrz6gNQErpDzYOrrj
+  # runPolicy: Serial
