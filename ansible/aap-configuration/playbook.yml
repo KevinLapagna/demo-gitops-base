@@ -6,7 +6,7 @@
   vars:
     controller_hostname: "https://aap-01-aap.apps.cluster-rzg46.dynamic.redhatworkshops.io"
     project_name: "Terraform HCP Demo"
-    project_scm_url: "https://github.com/KevinLapagna/ansible-hcp-demo.git"
+    project_scm_url: "https://github.com/KevinLapagna/demo-gitops-base.git"
     execution_environment_name: "terraform-hcp"
     execution_environment_image: "quay.io/klapagna/terraform-hcp:latest"
     default_organization: "SummConnOrg"

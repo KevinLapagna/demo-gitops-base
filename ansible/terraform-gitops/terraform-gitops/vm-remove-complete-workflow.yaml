@@ -1,6 +1,0 @@
----
-# Phase 1: Create Pull Request for VM Removal
-- ansible.builtin.import_playbook: vm-remove-pr.yaml
-
-# Phase 2: Wait for Checks and Merge Pull Request for VM Removal
-- ansible.builtin.import_playbook: vm-remove-merge-pr.yaml
