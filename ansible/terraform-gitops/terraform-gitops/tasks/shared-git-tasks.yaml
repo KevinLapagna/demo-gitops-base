@@ -1,0 +1,43 @@
+---
+# Shared Git operations for VM workflows
+# This file contains only the commit, push, PR creation, and cleanup tasks
+
+- name: Commit and push changes # noqa: command-instead-of-module
+  ansible.builtin.shell: |
+    git add {{ file_to_modify }}
+    git commit -m '{{ commit_message }}'
+    git push https://{{ github_token }}@github.com/{{ repo_url.split('/')[3] }}/{{ repo_url.split('/')[4] }} {{ new_branch_name }}
+  args:
+    chdir: "{{ clone_dest }}"
+  # no_log: true
+  environment:
+    GIT_TERMINAL_PROMPT: "0"
+  changed_when: true
+  when: changes_made | default(true)
+  tags: [commit, push]
+
+- name: Create pull request
+  ansible.builtin.uri:
+    url: "{{ github_api_url }}/repos/{{ repo_owner }}/{{ repo_name }}/pulls"
+    method: POST
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      title: "{{ pr_title }}"
+      body: "{{ pr_body }}"
+      head: "{{ new_branch_name }}"
+      base: "{{ base_branch }}"
+    status_code: [201, 422]
+  register: pr_creation
+  failed_when: pr_creation.status == 422 and "pull request already exists" not in pr_creation.json.message
+  when: changes_made | default(true)
+  tags: [pull_request]
+
+- name: Clean up temporary directory
+  ansible.builtin.file:
+    path: "{{ clone_dest }}"
+    state: absent
+  failed_when: false
+  tags: [cleanup, always]

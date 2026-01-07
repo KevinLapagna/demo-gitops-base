@@ -1,0 +1,39 @@
+---
+- name: Wait for Checks and Merge PR - VM Resize Part 2
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - shared-vars.yaml
+    - vm-resize-pull-request-vars.yaml
+
+  tasks:
+    - name: Validate required variables from Part 1
+      ansible.builtin.assert:
+        that:
+          - pr_creation is defined
+          - pr_creation.status is defined
+          - pr_creation.json is defined
+          - pr_creation.json.number is defined
+          - req_id is defined
+          - instance_name_to_resize is defined
+          - new_instance_type is defined
+        fail_msg: |
+          Required variables from Part 1 are missing.
+          This indicates that set_stats was not properly executed in Part 1.
+          Ensure the first workflow job completed successfully and used set_stats module.
+
+          Expected variables: pr_creation, req_id, instance_name_to_resize, new_instance_type
+          Received variables:
+          - pr_creation: {{ pr_creation | default('MISSING') }}
+          - req_id: {{ req_id | default('MISSING') }}
+          - instance_name_to_resize: {{ instance_name_to_resize | default('MISSING') }}
+          - new_instance_type: {{ new_instance_type | default('MISSING') }}
+      tags: [always]
+
+    # Include shared merge tasks
+    - name: Include shared merge tasks
+      ansible.builtin.include_tasks: tasks/shared-merge-tasks.yaml
+      vars:
+        workflow_type: "VM Resize"
+        additional_info: "Resizing VM: {{ instance_name_to_resize }} to {{ new_instance_type }}"
+      tags: [pull_request, merge]
