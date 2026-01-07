@@ -1,0 +1,17 @@
+---
+- name: Windows Ping Test
+  hosts: all
+  gather_facts: false
+  vars:
+    ansible_winrm_server_cert_validation: ignore  # Or 'validate' if you have proper certs
+
+  tasks:
+    - name: Test Windows connectivity
+      ansible.windows.win_ping:
+      register: ping_result
+
+    - name: Gather basic Windows facts
+      ansible.windows.setup:
+        gather_subset:
+          - min
+      register: windows_facts

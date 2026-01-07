@@ -1,0 +1,53 @@
+version: 3
+
+images:
+  base_image:
+    name: registry.redhat.io/ansible-automation-platform-24/ee-minimal-rhel9:latest
+    # name: quay.io/centos/centos:stream9
+
+options:
+  package_manager_path: /usr/bin/microdnf
+
+dependencies:
+  system:
+    - pkgconf-pkg-config
+    - systemd-devel
+    - gcc
+    - python3.11-devel
+  galaxy:
+    collections:
+      - name: cloud.terraform
+      - name: ansible.controller
+      - name: community.general
+      - name: ansible.windows
+      - name: chocolatey.chocolatey
+      - name: ansible.posix
+      - name: infra.aap_configuration
+    roles:
+      - name: RedHatOfficial.rhel9-pci-dss
+      - name: RedHatOfficial.rhel8-pci-dss
+      - name: RedHatOfficial.rhel7-pci-dss
+  ansible_core:
+    package_pip: ansible-core
+  ansible_runner:
+    package_pip: ansible-runner
+  python:
+    - petname
+
+additional_build_steps:
+  append_final:
+    - RUN curl
+      -O https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+      -O https://cli.github.com/packages/rpm/gh-cli.repo
+      --output-dir /etc/yum.repos.d/ &&
+      microdnf -y install terraform gh
+  prepend_galaxy:
+    # define a custom build arg env passthru- we still also have to pass
+    # `--build-arg ANSIBLE_GALAXY_SERVER_AUTOMATION_HUB_TOKEN` to get it to pick it up from the host env
+    # Build argument for passing the Automation Hub token from the host environment.
+    # This token is required for authenticating and accessing content from Automation Hub.
+    - ARG ANSIBLE_GALAXY_SERVER_AUTOMATION_HUB_TOKEN
+    - ENV ANSIBLE_GALAXY_SERVER_LIST=automation_hub,community_galaxy
+    - ENV ANSIBLE_GALAXY_SERVER_AUTOMATION_HUB_URL=https://console.redhat.com/api/automation-hub/content/published/
+    - ENV ANSIBLE_GALAXY_SERVER_AUTOMATION_HUB_AUTH_URL=https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token
+    - ENV ANSIBLE_GALAXY_SERVER_COMMUNITY_GALAXY_URL=https://galaxy.ansible.com/

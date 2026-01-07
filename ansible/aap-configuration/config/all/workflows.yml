@@ -1,0 +1,183 @@
+---
+controller_workflows:
+  - name: "Linux Preparation Workflow"
+    description: "Workflow to prepare Linux systems: ping test followed by PCI-DSS compliance"
+    organization: "{{ default_organization }}"
+    ask_limit_on_launch: true
+    limit: "os_type_Linux"
+    workflow_nodes:
+      - identifier: "Linux connectivity test"
+        unified_job_template: "Linux Management - Ping Test"
+        success_nodes:
+          - "Linux PCI-DSS compliance"
+      - identifier: "Linux PCI-DSS compliance"
+        unified_job_template: "Linux Management - PCI-DSS Compliance"
+
+  - name: "Windows Preparation Workflow"
+    description: "Workflow to prepare Windows systems: ping test followed by parallel patch and software management"
+    organization: "{{ default_organization }}"
+    ask_limit_on_launch: true
+    limit: "os_type_Windows"
+    workflow_nodes:
+      - identifier: "Windows connectivity test"
+        unified_job_template: "Windows Management - Ping Test"
+        success_nodes:
+          - "Windows patch management"
+          - "Windows software management"
+      - identifier: "Windows patch management"
+        unified_job_template: "Windows Management - Patch Management"
+      - identifier: "Windows software management"
+        unified_job_template: "Windows Management - Software Management"
+
+  - name: "VM Creation Request Workflow"
+    description: "Complete workflow for creating VM pull request, waiting for checks, and merging"
+    organization: "{{ default_organization }}"
+    survey_enabled: true
+    survey_spec:
+      name: "VM Pull Request Parameters"
+      description: "Parameters for creating VM pull request"
+      spec:
+        - question_name: "VM AMI"
+          question_description: "Operating System for the VM"
+          required: true
+          type: "multiplechoice"
+          variable: "vm_ami"
+          choices: "{{ ami_choices }}"
+          default: "{{ ami_default }}"
+        - question_name: "AWS Region"
+          question_description: "AWS Region for the VM"
+          required: true
+          type: "multiplechoice"
+          variable: "aws_region"
+          choices: "{{ region_choices }}"
+          default: "{{ region_default }}"
+        - question_name: "VM Size"
+          question_description: "Size of the VM instance"
+          required: false
+          type: "multiplechoice"
+          variable: "vm_size"
+          choices:
+            - "t2.micro"
+            - "t2.small"
+            - "t2.medium"
+            - "t2.large"
+            - "t2.xlarge"
+            - "t3.micro"
+            - "t3.small"
+            - "t3.medium"
+            - "t3.large"
+            - "t3.xlarge"
+            - "t3.2xlarge"
+            - "m5.large"
+            - "m5.xlarge"
+            - "m5.2xlarge"
+            - "m5.4xlarge"
+            - "c5.large"
+            - "c5.xlarge"
+            - "c5.2xlarge"
+            - "c5.4xlarge"
+          default: "t2.micro"
+        - question_name: "Instance Name"
+          question_description: "Name of the VM instance (optional - will generate random name if empty)"
+          required: false
+          type: "text"
+          variable: "instance_name"
+          default: ""
+        - question_name: "Request ID"
+          question_description: "Unique identifier for this request"
+          required: false
+          type: "text"
+          variable: "req_id"
+    workflow_nodes:
+      - identifier: "Create pull request for VM"
+        unified_job_template: "VM Pull Request - Create PR"
+        success_nodes:
+          - "Merge pull request for VM"
+      - identifier: "Merge pull request for VM"
+        unified_job_template: "VM Pull Request - Merge PR"
+        success_nodes:
+          - "Get Terraform run information"
+      - identifier: "Get Terraform run information"
+        unified_job_template: "HCP Terraform - Get Run Infos"
+        success_nodes:
+          - "Prepare and configure VM"
+      - identifier: "Prepare and configure VM"
+        unified_job_template: "VM Prepare Machine"
+
+  - name: "VM Resize Workflow"
+    description: "Complete workflow for resizing VM instance type, creating pull request, waiting for checks, and merging"
+    organization: "{{ default_organization }}"
+    survey_enabled: true
+    survey_spec:
+      name: "VM Resize Workflow Parameters"
+      description: "Parameters for the complete VM resize workflow"
+      spec:
+        - question_name: "Instance Name to Resize"
+          question_description: "Name of the VM instance to resize (must match existing instance)"
+          required: true
+          type: "text"
+          variable: "instance_name_to_resize"
+        - question_name: "New Instance Type"
+          question_description: "New instance type for the VM"
+          required: true
+          type: "multiplechoice"
+          variable: "new_instance_type"
+          choices:
+            - "t2.micro"
+            - "t2.small"
+            - "t2.medium"
+            - "t2.large"
+            - "t2.xlarge"
+            - "t3.micro"
+            - "t3.small"
+            - "t3.medium"
+            - "t3.large"
+            - "t3.xlarge"
+            - "t3.2xlarge"
+            - "m5.large"
+            - "m5.xlarge"
+            - "m5.2xlarge"
+            - "m5.4xlarge"
+            - "c5.large"
+            - "c5.xlarge"
+            - "c5.2xlarge"
+            - "c5.4xlarge"
+          default: "t3.medium"
+        - question_name: "Request ID"
+          question_description: "Unique identifier for this request (will be auto-generated if not provided)"
+          required: false
+          type: "text"
+          variable: "req_id"
+    workflow_nodes:
+      - identifier: "Create pull request for VM resize"
+        unified_job_template: "VM Resize Pull Request - Create PR"
+        success_nodes:
+          - "Merge pull request for VM resize"
+      - identifier: "Merge pull request for VM resize"
+        unified_job_template: "VM Resize Pull Request - Merge PR"
+
+  - name: "VM Remove Workflow"
+    description: "Complete workflow for removing VM instance, creating pull request, waiting for checks, and merging"
+    organization: "{{ default_organization }}"
+    survey_enabled: true
+    survey_spec:
+      name: "VM Remove Workflow Parameters"
+      description: "Parameters for the complete VM removal workflow"
+      spec:
+        - question_name: "Instance Name to Remove"
+          question_description: "Name of the VM instance to remove (must match existing instance)"
+          required: true
+          type: "text"
+          variable: "instance_name_to_remove"
+        - question_name: "Request ID"
+          question_description: "Unique identifier for this request (will be auto-generated if not provided)"
+          required: false
+          type: "text"
+          variable: "req_id"
+    workflow_nodes:
+      - identifier: "Create pull request for VM removal"
+        unified_job_template: "VM Remove Pull Request - Create PR"
+        success_nodes:
+          - "Merge pull request for VM removal"
+      - identifier: "Merge pull request for VM removal"
+        unified_job_template: "VM Remove Pull Request - Merge PR"

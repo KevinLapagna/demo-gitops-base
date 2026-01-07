@@ -1,0 +1,9 @@
+---
+- name: Create Project
+  ansible.controller.project:
+    name: "{{ project_name }}"
+    scm_type: git
+    scm_url: "{{ project_scm_url }}"
+    default_environment: "{{ execution_environment_name }}"
+    scm_update_on_launch: true
+    organization: "{{ default_organization }}"

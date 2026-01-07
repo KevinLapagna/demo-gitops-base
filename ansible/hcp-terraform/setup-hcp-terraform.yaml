@@ -1,0 +1,51 @@
+---
+- name: Clone and apply Terraform bootstrap
+  hosts: localhost
+  gather_facts: false
+  vars:
+    repo_url: "https://github.com/KevinLapagna/ansible-hcp-demo-infra.git"
+    repo_dest: "/tmp/ansible-hcp-demo-infra"
+    bootstrap_dir: "/tmp/ansible-hcp-demo-infra/bootstrap"
+  vars_files:
+    - ../vars.yaml
+  tasks:
+    - name: Clone the repository (shallow)
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ repo_dest }}"
+        depth: 1
+        force: true
+
+    - name: Run Terraform plan
+      cloud.terraform.terraform:
+        project_path: "{{ bootstrap_dir }}"
+        state: present
+        plan_file: "{{ bootstrap_dir }}/tfplan"
+        force_init:  true
+      environment:
+        TF_VAR_tfe_hostname: "{{ terraform_hostname }}"
+        TF_VAR_tfe_token: "{{ terraform_token }}"
+        TF_VAR_aws_access_key: "{{ aws_access_key }}"
+        TF_VAR_aws_secret_key: "{{ aws_secret_key }}"
+      register: tf_plan
+      check_mode: true
+
+    - name: Show Terraform plan output
+      ansible.builtin.debug:
+        var: tf_plan
+
+    - name: Run Terraform apply
+      cloud.terraform.terraform:
+        project_path: "{{ bootstrap_dir }}"
+        state: present
+        plan_file: "{{ bootstrap_dir }}/tfplan"
+      environment:
+        TF_VAR_tfe_hostname: "{{ terraform_hostname }}"
+        TF_VAR_tfe_token: "{{ terraform_token }}"
+        TF_VAR_aws_access_key: "{{ aws_access_key }}"
+        TF_VAR_aws_secret_key: "{{ aws_secret_key }}"
+      register: tf_apply
+
+    - name: Show Terraform apply output
+      ansible.builtin.debug:
+        var: tf_apply

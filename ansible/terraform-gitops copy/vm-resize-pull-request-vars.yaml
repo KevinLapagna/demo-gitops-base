@@ -1,0 +1,23 @@
+---
+# VM Instance Type Change specific configuration
+new_branch_name: "feature/{{ req_id }}-resize-vm"  # Name for your new branch with request ID
+commit_message: "feat: Change VM {{ instance_name_to_resize }} instance type to {{ new_instance_type }} per {{ req_id }}"  # Commit message with request ID
+
+# Pull Request Configuration
+pr_title: "feat: Change VM {{ instance_name_to_resize }} instance type to {{ new_instance_type }} per {{ req_id }}"
+pr_body: >-
+  This pull request was automatically created by an Ansible playbook to change the instance type
+  of EC2 instance '{{ instance_name_to_resize }}' to '{{ new_instance_type }}' for request {{ req_id }}.
+
+  **Instance being resized:** {{ instance_name_to_resize }}
+  **Current instance type:** {{ current_instance_type | default('unknown') }}
+  **New instance type:** {{ new_instance_type }}
+  **Request ID:** {{ req_id }}
+
+  **Note:** This change will require stopping and starting the instance, which will cause downtime.
+  
+  Please review the changes before merging.
+
+# VM Instance Type Change Configuration
+# instance_name_to_resize: ""  # REQUIRED: Name of the VM instance to resize (should match the name used in the Terraform block)
+# new_instance_type: ""        # REQUIRED: New instance type (e.g., t3.large, m5.xlarge, etc.)

@@ -1,0 +1,11 @@
+---
+- name: Ping Test for Terraform HCP EC2 VMs
+  hosts: all
+  gather_facts: false
+  remote_user: ec2-user
+
+  tasks:
+    - name: Test connectivity to all hosts
+      ansible.builtin.raw: echo "pong"
+      register: ping_result
+      changed_when: false

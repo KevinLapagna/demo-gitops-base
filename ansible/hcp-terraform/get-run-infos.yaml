@@ -1,0 +1,61 @@
+# This playbook retrieves HCP Terraform run information and cost estimates based on a pull request's commit SHA.
+- name: Get HCP Terraform run infos
+  hosts: localhost
+  gather_facts: false
+  vars:
+    hcp_terraform_api_url: "https://app.terraform.io/api/v2"
+    hcp_terraform_organization: "lennart-org"  # Update this to match your HCP Terraform organization
+  tasks:
+    - name: Get HCP Terraform run infos using the commit SHA and wait until applied
+      ansible.builtin.uri:
+        url: "{{ hcp_terraform_api_url }}/organizations/{{ hcp_terraform_organization }}/runs"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ terraform_token }}"
+        status_code: [200]
+        body_format: form-urlencoded
+        body:
+          "search[commit]": "{{ merge_result.json.sha }}"
+      register: terraform_runs
+      until: >
+        terraform_runs.json.data | length > 0 and
+        (terraform_runs.json.data | first).attributes.status == "applied"
+      retries: 60  # Wait up to 10 minutes (60 retries * 10 seconds)
+      delay: 10    # Wait 30 seconds between checks
+      when:
+        - merge_result.get('json', {}).get('sha') is defined
+      tags: [terraform, hcp]
+
+    - name: Extract run details from HCP Terraform response
+      ansible.builtin.set_fact:
+        terraform_run_info: "{{ terraform_runs.json.data | first | default({}) }}"
+      when: terraform_runs.get('json', {}).get('data', []) | length > 0
+      tags: [terraform, hcp]
+
+    - name: Get cost estimate from HCP Terraform run
+      ansible.builtin.uri:
+        url: "https://app.terraform.io{{ terraform_run_info.relationships['cost-estimate'].links.related }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ terraform_token }}"
+        status_code: [200]
+      register: terraform_cost_estimate
+      when: terraform_run_info.get('relationships', {}).get('cost-estimate', {}).get('links', {}).get('related') is defined
+      tags: [terraform, hcp, cost]
+
+    - name: Extract cost estimate details
+      ansible.builtin.set_fact:
+        terraform_cost_info: "{{ terraform_cost_estimate.json.data | default({}) }}"
+      when:
+        - terraform_cost_estimate.get('json', {}).get('data') is defined
+      tags: [terraform, hcp, cost]
+
+    - name: Display debug of var terraform_cost_info
+      ansible.builtin.debug:
+        msg: |
+          delta-monthly-cost: {{ terraform_cost_info.attributes['delta-monthly-cost'] }}
+          prior-monthly-cost: {{ terraform_cost_info.attributes['prior-monthly-cost'] }}
+          proposed-monthly-cost: {{ terraform_cost_info.attributes['proposed-monthly-cost'] }}
+      when:
+        - terraform_cost_info.attributes is defined
+      tags: [terraform, hcp, cost]

@@ -1,0 +1,212 @@
+---
+- name: Windows Software Management Demo
+  hosts: all
+  gather_facts: true
+  vars:
+    ansible_winrm_server_cert_validation: ignore
+    # Chrome MSI download URL (use latest)
+    chrome_msi_url: "https://dl.google.com/chrome/install/googlechromestandaloneenterprise64.msi"
+
+  tasks:
+    - name: Check if running on Windows
+      ansible.builtin.fail:
+        msg: "This playbook is designed for Windows hosts only"
+      when: ansible_os_family != "Windows"
+
+    - name: Check if Google Chrome is installed via registry
+      ansible.windows.win_reg_stat:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{4122160E-40DC-391A-B1BA-F2360D22E82C}
+      register: chrome_reg_check
+      when: not (skip_chrome | default(false) | bool)
+
+    - name: Set Chrome installation status
+      ansible.builtin.set_fact:
+        chrome_installed: "{{ chrome_reg_check.exists | default(false) }}"
+      when: not (skip_chrome | default(false) | bool)
+
+    - name: Create temporary directory for downloads
+      ansible.windows.win_tempfile:
+        state: directory
+        suffix: software_mgmt
+      register: temp_dir
+      when:
+        - not (skip_chrome | default(false) | bool)
+        - not (chrome_installed | default(false))
+
+    - name: Download Google Chrome MSI
+      ansible.windows.win_get_url:
+        url: "{{ chrome_msi_url }}"
+        dest: "{{ temp_dir.path }}\\chrome.msi"
+        timeout: 60
+      register: chrome_download
+      when:
+        - not (skip_chrome | default(false) | bool)
+        - not (chrome_installed | default(false))
+        - temp_dir is defined
+
+    - name: Install Google Chrome via MSI
+      ansible.windows.win_package:
+        path: "{{ temp_dir.path }}\\chrome.msi"
+        product_id: "{4122160E-40DC-391A-B1BA-F2360D22E82C}"
+        arguments: "/quiet /norestart"
+        state: present
+      register: chrome_install
+      when:
+        - not (skip_chrome | default(false) | bool)
+        - not (chrome_installed | default(false))
+        - chrome_download is succeeded
+
+    - name: Get list of all available Windows features (for debugging)
+      ansible.windows.win_shell: |
+        Get-WindowsFeature | Select-Object Name, DisplayName, InstallState | Format-Table -AutoSize
+      register: available_features
+      when: list_features | default(false) | bool
+      changed_when: false
+
+    - name: Display available IIS/Web features
+      ansible.builtin.debug:
+        var: available_features.stdout_lines
+      when: list_features | default(false) | bool
+
+    - name: Install IIS Web Server feature
+      ansible.windows.win_feature:
+        name:
+          - Web-Server
+          - Web-Common-Http
+          - Web-Http-Errors
+          - Web-Http-Logging
+          - Web-Request-Monitor
+          - Web-Filtering
+          - Web-Stat-Compression
+          - Web-Default-Doc
+          - Web-Dir-Browsing
+          - Web-Mgmt-Tools
+        state: present
+        include_management_tools: true
+      register: iis_install
+      when: not (skip_iis | default(false) | bool)
+
+    - name: Install .NET Framework features
+      ansible.windows.win_feature:
+        name:
+          - NET-Framework-Core
+          - NET-Framework-45-Features
+          - NET-Framework-45-Core
+          - NET-Framework-45-ASPNET
+        state: present
+      register: dotnet_install
+      when: not (skip_dotnet | default(false) | bool)
+
+    - name: Install Chocolatey package manager
+      chocolatey.chocolatey.win_chocolatey:
+        name: chocolatey
+        state: present
+      register: choco_install
+      when: not (skip_chocolatey | default(false) | bool)
+
+    - name: Install software packages via Chocolatey
+      chocolatey.chocolatey.win_chocolatey:
+        name:
+          - notepadplusplus
+          - 7zip
+          - firefox
+        state: present
+      register: choco_packages_install
+      when:
+        - not (skip_chocolatey_packages | default(false) | bool)
+        - not (skip_chocolatey | default(false) | bool)
+
+    - name: Check if VC++ Redistributable is installed via registry (Minimum Runtime)
+      ansible.windows.win_reg_stat:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{130A991B-6E86-4D62-86F4-656E6C9DA867}
+      register: vcredist_reg_check
+      when: not (skip_vcredist | default(false) | bool)
+
+    - name: Set VC++ Redistributable installation status
+      ansible.builtin.set_fact:
+        vcredist_installed: "{{ vcredist_reg_check.exists | default(false) }}"
+      when: not (skip_vcredist | default(false) | bool)
+
+    - name: Install Visual C++ Redistributable
+      ansible.windows.win_package:
+        path: "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        product_id: "{130A991B-6E86-4D62-86F4-656E6C9DA867}"
+        arguments: "/quiet /norestart"
+        state: present
+      register: vcredist_install
+      when:
+        - not (skip_vcredist | default(false) | bool)
+        - not (vcredist_installed | default(false))
+
+    - name: Clean up temporary directory
+      ansible.windows.win_file:
+        path: "{{ temp_dir.path }}"
+        state: absent
+      when:
+        - temp_dir is defined
+        - temp_dir.path is defined
+
+    - name: Display installation results
+      ansible.builtin.debug:
+        msg: |
+          === Windows Software Management Results ===
+          Chrome Installation: {{ 'Skipped' if (skip_chrome | default(false) | bool)
+                                  else ('Already installed' if (chrome_installed | default(false))
+                                  else ('Success' if (chrome_install.changed | default(false))
+                                  else 'Failed or no change')) }}
+          IIS Installation: {{ 'Skipped' if (skip_iis | default(false) | bool)
+                               else ('Success' if (iis_install.changed | default(false))
+                               else 'Already installed or no change') }}
+          .NET Installation: {{ 'Skipped' if (skip_dotnet | default(false) | bool)
+                                else ('Success' if (dotnet_install.changed | default(false))
+                                else 'Already installed or no change') }}
+          Chocolatey Installation: {{ 'Skipped' if (skip_chocolatey | default(false) | bool)
+                                      else ('Success' if (choco_install.changed | default(false))
+                                      else 'Already installed') }}
+          Chocolatey Packages: {{ 'Skipped' if (skip_chocolatey_packages | default(false) | bool or skip_chocolatey | default(false) | bool)
+                                  else ('Success' if (choco_packages_install.changed | default(false))
+                                  else 'Already installed or no change') }}
+          VC++ Redistributable: {{ 'Skipped' if (skip_vcredist | default(false) | bool)
+                                   else ('Already installed' if (vcredist_installed | default(false))
+                                   else ('Success' if (vcredist_install.changed | default(false))
+                                   else 'Failed or no change')) }}
+
+    - name: Check if reboot is required
+      ansible.windows.win_shell: |
+        $pendingReboot = $false
+
+        # Check Windows Update
+        if (Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired" -ErrorAction SilentlyContinue) {
+            $pendingReboot = $true
+        }
+
+        # Check Component Based Servicing
+        if (Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending" -ErrorAction SilentlyContinue) {
+            $pendingReboot = $true
+        }
+
+        # Check pending file rename operations
+        if (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager" -Name PendingFileRenameOperations -ErrorAction SilentlyContinue) {
+            $pendingReboot = $true
+        }
+
+        if ($pendingReboot) {
+            Write-Output "reboot_required"
+        } else {
+            Write-Output "no_reboot_required"
+        }
+      register: reboot_check
+      changed_when: false
+
+    - name: Notify about pending reboot
+      ansible.builtin.debug:
+        msg: "A reboot is required to complete some installations"
+      when: reboot_check.stdout_lines[0] == "reboot_required"
+
+    - name: Reboot if required (optional)
+      ansible.windows.win_reboot:
+        reboot_timeout: 600
+        test_command: whoami
+      when:
+        - reboot_check.stdout_lines[0] == "reboot_required"
+        - ansible_reboot_if_required | default(false)

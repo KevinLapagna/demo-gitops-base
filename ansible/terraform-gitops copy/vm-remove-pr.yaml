@@ -1,0 +1,60 @@
+---
+- name: Clone Repo, Remove VM, Commit, Push, and Create PR - VM Removal
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - shared-vars.yaml
+    - vm-remove-pull-request-vars.yaml
+
+  tasks:
+    # Include shared setup tasks
+    - name: Include shared setup tasks
+      ansible.builtin.include_tasks: tasks/shared-setup-tasks.yaml
+      tags: [always, clone, git_config, branch]
+
+    - name: Validate required variables
+      ansible.builtin.assert:
+        that:
+          - instance_name_to_remove is defined
+          - instance_name_to_remove | length > 0
+        fail_msg: "instance_name_to_remove must be defined and not empty"
+      tags: [always]
+
+    - name: Check if instances.tf file exists
+      ansible.builtin.stat:
+        path: "{{ clone_dest }}/{{ file_to_modify }}"
+      register: instances_file
+      tags: [check_file]
+
+    - name: Fail if instances.tf file does not exist
+      ansible.builtin.fail:
+        msg: "File {{ file_to_modify }} does not exist in the repository"
+      when: not instances_file.stat.exists
+      tags: [check_file]
+
+    - name: Remove VM block from instances.tf
+      ansible.builtin.blockinfile:
+        path: "{{ clone_dest }}/{{ file_to_modify }}"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - {{ instance_name_to_remove }}"
+        state: absent
+      register: block_removal
+      failed_when: block_removal is not changed
+      tags: [modify_file]
+
+    # Include shared Git workflow tasks (commit, push, PR creation, cleanup)
+    - name: Include shared Git workflow tasks
+      ansible.builtin.include_tasks: tasks/shared-git-tasks.yaml
+      vars:
+        changes_made: "{{ block_removal.changed }}"
+      tags: [commit, push, pull_request, cleanup]
+
+    - name: Set stats for workflow - Pass variables to Part 2
+      ansible.builtin.set_stats:
+        data:
+          pr_creation: "{{ pr_creation }}"
+          req_id: "{{ req_id }}"
+          instance_name_to_remove: "{{ instance_name_to_remove }}"
+        per_host: false
+        aggregate: false
+      when: pr_creation is defined and block_removal.changed
+      tags: [workflow_stats]

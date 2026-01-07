@@ -1,0 +1,58 @@
+---
+- name: Configure AAP
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    controller_hostname: "https://aap-01-aap.apps.cluster-rzg46.dynamic.redhatworkshops.io"
+    project_name: "Terraform HCP Demo"
+    project_scm_url: "https://github.com/KevinLapagna/ansible-hcp-demo.git"
+    execution_environment_name: "terraform-hcp"
+    execution_environment_image: "quay.io/klapagna/terraform-hcp:latest"
+    default_organization: "SummConnOrg"
+    # Set to true to force update existing credentials (default: false for idempotency)
+    force_update_credentials: "{{ force_update_credentials_survey | default('no') == 'yes' }}"
+
+  vars_files:
+    - ../vars.yaml
+    - ../ami-mapping.yaml
+
+  # module_defaults:
+  #   group/ansible.controller.controller:
+  #     controller_host: "{{ controller_hostname }}"
+  #     controller_username: "{{ controller_username }}"
+  #     controller_password: "{{ controller_password }}"
+  #     state: present
+
+  tasks:
+    - name: Generate AMI choices and region choices
+      ansible.builtin.set_fact:
+        ami_choices: "{{ ami_mappings | map(attribute='name') | list }}"
+        region_choices: "{{ ami_mappings | map(attribute='regions') | map('dict2items') | map('map', attribute='key') | flatten | unique | list }}"
+      tags: [always]
+
+    - name: Set default AMI and region
+      ansible.builtin.set_fact:
+        ami_default: "{{ ami_choices | first }}"
+        region_default: "{{ region_choices | first }}"
+      tags: [always]
+
+    - name: Load all common configuration
+      ansible.builtin.include_vars:
+        dir: "config/all"
+        extensions:
+          - 'yml'
+
+    # - name: Load environment-specific configuration
+    #   ansible.builtin.include_vars:
+    #     dir: "config/{{ env }}"
+    #     extensions:
+    #       - 'yml'
+    #   # Example: Run with `ansible-playbook playbook.yml -e "env=prod"`
+    #   ignore_errors: true
+
+    - name: Run the main configuration role
+      ansible.builtin.include_role:
+        name: infra.aap_configuration.dispatch
+      vars:
+        dispatch_include_wildcard_vars: true

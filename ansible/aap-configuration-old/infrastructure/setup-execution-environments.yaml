@@ -1,0 +1,6 @@
+---
+- name: Create Execution Environment
+  ansible.controller.execution_environment:
+    name: "{{ execution_environment_name }}"
+    image: "{{ execution_environment_image }}"
+    pull: always

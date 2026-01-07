@@ -1,0 +1,81 @@
+---
+# Shared tasks for PR merging workflows
+# This file contains common tasks used by both vm-merge-pr.yaml and vm-remove-merge-pr.yaml
+
+- name: Wait for integrations to register
+  ansible.builtin.pause:
+    seconds: "{{ integration_wait_time }}"
+  when: pr_creation.status == 201
+  tags: [pull_request, merge]
+
+- name: Get PR commit SHA
+  ansible.builtin.uri:
+    url: "{{ github_api_url }}/repos/{{ repo_owner }}/{{ repo_name }}/pulls/{{ pr_creation.json.number }}"
+    method: GET
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+    status_code: [200]
+  register: pr_details
+  when: pr_creation.status == 201
+  tags: [pull_request, merge]
+
+- name: Wait for all PR status checks to complete
+  ansible.builtin.uri:
+    url: "{{ github_api_url }}/repos/{{ repo_owner }}/{{ repo_name }}/commits/{{ pr_details.json.head.sha }}/status"
+    method: GET
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+    status_code: [200]
+  register: commit_status
+  retries: 30
+  delay: 15
+  until: >
+    commit_status.json.state != 'pending'
+  when: pr_creation.status == 201
+  tags: [pull_request, merge]
+
+- name: Merge pull request if all checks pass
+  ansible.builtin.uri:
+    url: "{{ github_api_url }}/repos/{{ repo_owner }}/{{ repo_name }}/pulls/{{ pr_creation.json.number }}/merge"
+    method: PUT
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      commit_title: "{{ pr_title }}"
+      commit_message: "{{ pr_body }}"
+      merge_method: "squash"
+    status_code: [200, 405, 409]
+  register: merge_result
+  when:
+    - pr_creation.status == 201
+    - commit_status is defined
+    - commit_status.json.state in ['success', 'no_status']
+  failed_when:
+    - merge_result.status not in [200, 405, 409]
+  tags: [merge]
+
+- name: Set merge result stats
+  ansible.builtin.set_stats:
+    data:
+      merge_result: "{{ merge_result }}"
+    aggregate: false
+    per_host: false
+  tags: [merge]
+
+- name: Delete branch after merge
+  ansible.builtin.uri:
+    url: "{{ github_api_url }}/repos/{{ repo_owner }}/{{ repo_name }}/git/refs/heads/{{ new_branch_name }}"
+    method: DELETE
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+    status_code: [204, 422]
+  when:
+    - merge_result is defined
+    - merge_result.status is defined
+    - merge_result.status == 200
+  tags: [merge]

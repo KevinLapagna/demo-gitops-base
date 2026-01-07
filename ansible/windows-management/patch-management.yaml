@@ -1,0 +1,478 @@
+---
+- name: Windows Patch Management Demo
+  hosts: all
+  gather_facts: true
+  vars:
+    ansible_winrm_server_cert_validation: ignore
+    # Set to true for dry run (show what would be changed without making changes)
+    dry_run: "{{ (patch_dry_run | default('true')) | bool }}"
+
+  tasks:
+    - name: Display dry run status
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          DRY RUN MODE: {{ 'ENABLED' if dry_run else 'DISABLED' }}
+          ========================================
+          {% if dry_run %}
+          This is a DRY RUN - No changes will be made to the system.
+          Updates will be searched but not installed.
+          System will not be rebooted.
+          Only informational tasks will be executed.
+          {% else %}
+          This is a LIVE RUN - Changes will be made to the system.
+          Updates will be installed if available.
+          System may be rebooted if required.
+          {% endif %}
+          ========================================
+
+    - name: Check current system patch level
+      ansible.windows.win_shell: |
+        $LastInstalled = Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 1
+        @{
+          "LastPatchInstalled" = $LastInstalled.HotFixID
+          "InstallDate" = $LastInstalled.InstalledOn.ToString()
+          "TotalHotfixes" = (Get-HotFix).Count
+        } | ConvertTo-Json
+      register: current_patches
+      changed_when: false
+
+    - name: Display current patch status
+      ansible.builtin.debug:
+        msg: "Current patch status: {{ current_patches.stdout | from_json }}"
+
+    - name: Check for available Windows updates
+      ansible.windows.win_updates:
+        category_names:
+          - SecurityUpdates
+          - CriticalUpdates
+          - UpdateRollups
+          - Updates
+        state: searched
+      register: available_updates
+
+    - name: Display available updates summary
+      ansible.builtin.debug:
+        msg: |
+          Available updates found: {{ available_updates.found_update_count }}
+          Updates requiring reboot: {{ available_updates.reboot_required }}
+
+    - name: Show details of available updates
+      ansible.builtin.debug:
+        msg: |
+          Update: {{ item.title }}
+          Category: {{ item.categories[0] | default('Unknown') }}
+          Size: {{ (item.size / 1024 / 1024) | round(2) }} MB
+          KB: {{ item.kb[0] | default('N/A') }}
+      loop: "{{ available_updates.updates | default([], true) }}"
+      when: 
+        - available_updates.found_update_count > 0
+
+    - name: Create pre-update system restore point
+      ansible.windows.win_shell: |
+        try {
+          Enable-ComputerRestore -Drive "C:{{ '\' }}"
+          Checkpoint-Computer -Description "Ansible Pre-Update Restore Point - $(Get-Date -Format 'yyyy-MM-dd HH:mm')" -RestorePointType "MODIFY_SETTINGS"
+          Write-Output "Restore point created successfully"
+        } catch {
+          Write-Output "Failed to create restore point: $($_.Exception.Message)"
+        }
+      register: restore_point
+      changed_when: "'created successfully' in restore_point.stdout"
+      when: not dry_run
+
+    - name: Simulate restore point creation (dry run)
+      ansible.builtin.debug:
+        msg: "DRY RUN: Would create system restore point with description 'Ansible Pre-Update Restore Point - {{ ansible_date_time.iso8601_basic_short }}'"
+      register: restore_point_dry
+      when: dry_run
+
+    - name: Display restore point creation result
+      ansible.builtin.debug:
+        msg: "Restore point creation: {{ restore_point.stdout.strip() if not dry_run else 'DRY RUN: Simulated restore point creation' }}"
+
+    - name: Install critical and security updates only (safe approach)
+      ansible.windows.win_updates:
+        category_names:
+          - SecurityUpdates
+          - CriticalUpdates
+        state: installed
+        reboot: false
+        log_path: C:\ansible_update_log.txt
+      register: critical_updates
+      when: 
+        - available_updates.found_update_count > 0
+        - not dry_run
+
+    - name: Simulate critical updates installation (dry run)
+      ansible.builtin.debug:
+        msg: |
+          DRY RUN: Would install {{ available_updates.found_update_count }} critical and security updates:
+          {% for update in available_updates.updates %}
+          {% if update.categories[0] in ['Security Updates', 'Critical Updates'] %}
+          - {{ update.title }} ({{ update.kb[0] | default('N/A') }}) - {{ (update.size / 1024 / 1024) | round(2) }} MB
+          {% endif %}
+          {% endfor %}
+      register: critical_updates_dry
+      when: 
+        - available_updates.found_update_count > 0
+        - dry_run
+
+    - name: Display critical updates installation results
+      ansible.builtin.debug:
+        msg: |
+          {% if dry_run %}
+          DRY RUN: Would install critical updates
+          Critical updates available: {{ available_updates.updates | selectattr('categories', 'contains', 'Security Updates') | list | length + available_updates.updates | selectattr('categories', 'contains', 'Critical Updates') | list | length }}
+          {% else %}
+          Critical updates installed: {{ critical_updates.installed_update_count | default(0) }}
+          Updates failed: {{ critical_updates.failed_update_count | default(0) }}
+          Reboot required: {{ critical_updates.reboot_required | default(false) }}
+          {% endif %}
+      when: (critical_updates is defined) or (critical_updates_dry is defined)
+
+    - name: Show installed critical updates
+      ansible.builtin.debug:
+        msg: |
+          {% if dry_run %}
+          DRY RUN: Would install: {{ item.title }}
+          KB: {{ item.kb[0] | default('N/A') }}
+          Category: {{ item.categories[0] | default('Unknown') }}
+          {% else %}
+          Installed: {{ item.title }}
+          KB: {{ item.kb[0] | default('N/A') }}
+          Category: {{ item.categories[0] | default('Unknown') }}
+          {% endif %}
+      loop: "{% if dry_run %}{{ available_updates.updates | selectattr('categories', 'intersect', ['Security Updates', 'Critical Updates']) | list }}{% else %}{{ critical_updates.updates | default([]) }}{% endif %}"
+      when: 
+        - (critical_updates is defined and critical_updates.installed_update_count > 0 and not dry_run) or 
+          (dry_run and available_updates.found_update_count > 0)
+
+    - name: Install all available updates (comprehensive approach)
+      ansible.windows.win_updates:
+        category_names:
+          - SecurityUpdates
+          - CriticalUpdates
+          - UpdateRollups
+          - Updates
+          - DefinitionUpdates
+        state: installed
+        reboot: false
+        log_path: C:\ansible_update_log.txt
+        accept_list:
+          - "KB*"  # Accept all KB updates
+        reject_list:
+          - "KB2267602"  # Example of rejecting specific problematic update
+      register: all_updates
+      when: 
+        - available_updates.found_update_count > 0
+        - ansible_hostname is match(".*-patch-test.*")  # Only on test systems
+        - not dry_run
+      tags: comprehensive
+
+    - name: Simulate comprehensive updates installation (dry run)
+      ansible.builtin.debug:
+        msg: |
+          DRY RUN: Would install all {{ available_updates.found_update_count }} available updates:
+          {% for update in available_updates.updates %}
+          - {{ update.title }} ({{ update.kb[0] | default('N/A') }}) - {{ (update.size / 1024 / 1024) | round(2) }} MB - {{ update.categories[0] | default('Unknown') }}
+          {% endfor %}
+      register: all_updates_dry
+      when: 
+        - available_updates.found_update_count > 0
+        - ansible_hostname is match(".*-patch-test.*")  # Only on test systems
+        - dry_run
+      tags: comprehensive
+
+    - name: Display comprehensive updates results
+      ansible.builtin.debug:
+        msg: |
+          {% if dry_run %}
+          DRY RUN: Would install all available updates
+          Total updates available: {{ available_updates.found_update_count }}
+          {% else %}
+          All updates installed: {{ all_updates.installed_update_count | default(0) }}
+          Updates failed: {{ all_updates.failed_update_count | default(0) }}
+          Reboot required: {{ all_updates.reboot_required | default(false) }}
+          {% endif %}
+      when: (all_updates is defined) or (all_updates_dry is defined)
+      tags: comprehensive
+
+    - name: Check if reboot is required after updates
+      ansible.windows.win_shell: |
+        if (Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired" -EA Ignore) { 
+          Write-Output "true" 
+        } else { 
+          Write-Output "false" 
+        }
+      register: reboot_needed
+      changed_when: false
+      when: not dry_run
+
+    - name: Simulate reboot requirement check (dry run)
+      ansible.builtin.set_fact:
+        reboot_needed:
+          stdout: "{{ 'true' if available_updates.found_update_count > 0 else 'false' }}"
+      when: dry_run
+
+    - name: Create pre-reboot status file
+      ansible.windows.win_copy:
+        content: |
+          Windows Update Status - {{ ansible_date_time.iso8601 }}
+          ================================================
+          
+          Pre-Update Status:
+          - Total hotfixes before: {{ (current_patches.stdout | from_json).TotalHotfixes }}
+          - Last patch before: {{ (current_patches.stdout | from_json).LastPatchInstalled }}
+          
+          Update Installation:
+          - Critical updates installed: {{ critical_updates.installed_update_count | default(0) }}
+          - All updates installed: {{ all_updates.installed_update_count | default(0) if all_updates is defined else 'N/A' }}
+          - Updates failed: {{ critical_updates.failed_update_count | default(0) }}
+          
+          Reboot Status:
+          - Reboot required: {{ reboot_needed.stdout.strip() }}
+          - System will reboot: {{ reboot_needed.stdout.strip() == 'true' }}
+        dest: C:\ansible_patch_status.txt
+      register: status_file
+      when: not dry_run
+
+    - name: Simulate status file creation (dry run)
+      ansible.builtin.debug:
+        msg: |
+          DRY RUN: Would create status file at C:\ansible_patch_status.txt with content:
+          - Total hotfixes before: {{ (current_patches.stdout | from_json).TotalHotfixes }}
+          - Available updates: {{ available_updates.found_update_count }}
+          - Would require reboot: {{ reboot_needed.stdout.strip() == 'true' }}
+      when: dry_run
+
+    - name: Reboot system if required
+      ansible.windows.win_reboot:
+        msg: "Rebooting after Windows updates installation"
+        pre_reboot_delay: 30
+        post_reboot_delay: 60
+        reboot_timeout: 900
+        test_command: whoami
+      register: update_reboot
+      when: 
+        - reboot_needed.stdout.strip() == 'true'
+        - not dry_run
+
+    - name: Simulate system reboot (dry run)
+      ansible.builtin.debug:
+        msg: "DRY RUN: Would reboot system due to installed updates"
+      register: update_reboot_dry
+      when: 
+        - reboot_needed.stdout.strip() == 'true'
+        - dry_run
+
+    - name: Wait for system to be fully ready after reboot
+      ansible.windows.win_wait_for:
+        port: 5986
+        host: "{{ ansible_host }}"
+        delay: 30
+        timeout: 600
+      delegate_to: localhost
+      when: 
+        - reboot_needed.stdout.strip() == 'true'
+        - not dry_run
+
+    - name: Verify system is responsive after reboot
+      ansible.windows.win_ping:
+      register: post_reboot_ping
+      when: 
+        - reboot_needed.stdout.strip() == 'true'
+        - not dry_run
+
+    - name: Check post-update patch level
+      ansible.windows.win_shell: |
+        $LastInstalled = Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 1
+        @{
+          "LastPatchInstalled" = $LastInstalled.HotFixID
+          "InstallDate" = $LastInstalled.InstalledOn.ToString()
+          "TotalHotfixes" = (Get-HotFix).Count
+        } | ConvertTo-Json
+      register: post_update_patches
+      changed_when: false
+      when: not dry_run
+
+    - name: Simulate post-update patch level (dry run)
+      ansible.builtin.set_fact:
+        post_update_patches:
+          stdout: '{"LastPatchInstalled": "{{ (current_patches.stdout | from_json).LastPatchInstalled }}", "InstallDate": "{{ ansible_date_time.iso8601 }}", "TotalHotfixes": {{ (current_patches.stdout | from_json).TotalHotfixes + available_updates.found_update_count }}}'
+      when: dry_run
+
+    - name: Check for remaining updates after installation
+      ansible.windows.win_updates:
+        category_names:
+          - SecurityUpdates
+          - CriticalUpdates
+          - UpdateRollups
+          - Updates
+        state: searched
+      register: remaining_updates
+      when: not dry_run
+
+    - name: Simulate remaining updates check (dry run)
+      ansible.builtin.set_fact:
+        remaining_updates:
+          found_update_count: 0
+      when: dry_run
+
+    - name: Get Windows Update service status
+      ansible.windows.win_service_info:
+        name: wuauserv
+      register: wu_service
+
+    - name: Generate patch management report
+      ansible.windows.win_copy:
+        content: |
+          Windows Patch Management Report {% if dry_run %}(DRY RUN){% endif %}
+          Generated by Ansible on {{ ansible_date_time.iso8601 }}
+          ==============================================
+          
+          System Information:
+          - Computer Name: {{ ansible_hostname }}
+          - OS: {{ ansible_os_name }}
+          - Architecture: {{ ansible_architecture }}
+          
+          Pre-Update Status:
+          - Total hotfixes before: {{ (current_patches.stdout | from_json).TotalHotfixes }}
+          - Last patch before: {{ (current_patches.stdout | from_json).LastPatchInstalled }}
+          - Install date: {{ (current_patches.stdout | from_json).InstallDate }}
+          
+          Update Installation Results:
+          {% if dry_run %}
+          - Updates found (would install): {{ available_updates.found_update_count }}
+          - Critical updates (would install): {{ available_updates.updates | selectattr('categories', 'intersect', ['Security Updates', 'Critical Updates']) | list | length }}
+          - Updates failed: 0 (dry run)
+          - Installation log: Would be created at C:\ansible_update_log.txt
+          {% else %}
+          - Critical updates found: {{ available_updates.found_update_count }}
+          - Critical updates installed: {{ critical_updates.installed_update_count | default(0) }}
+          - Updates failed: {{ critical_updates.failed_update_count | default(0) }}
+          - Installation log: C:\ansible_update_log.txt
+          {% endif %}
+          
+          Post-Update Status:
+          - Total hotfixes after: {{ (post_update_patches.stdout | from_json).TotalHotfixes }}
+          - Latest patch: {{ (post_update_patches.stdout | from_json).LastPatchInstalled }}
+          - Remaining updates: {{ remaining_updates.found_update_count }}
+          
+          Reboot Information:
+          - Reboot was required: {{ reboot_needed.stdout.strip() == 'true' }}
+          {% if dry_run %}
+          - Reboot completed: Would reboot if required (dry run)
+          - System responsive: Would verify after reboot (dry run)
+          {% else %}
+          - Reboot completed: {{ update_reboot.changed | default(false) }}
+          - System responsive: {{ post_reboot_ping is succeeded | default('N/A') }}
+          {% endif %}
+          
+          Windows Update Service:
+          - Service status: {{ wu_service.services[0].state }}
+          - Startup type: {{ wu_service.services[0].start_mode }}
+          
+          Restore Point:
+          {% if dry_run %}
+          - Created: Would create restore point (dry run)
+          {% else %}
+          - Created: {{ 'created successfully' in restore_point.stdout }}
+          {% endif %}
+          
+          Report completed at: {{ ansible_date_time.iso8601 }}
+        dest: C:\ansible_patch_report{% if dry_run %}_dry_run{% endif %}_{{ ansible_date_time.date }}.txt
+      register: patch_report
+      when: not dry_run
+
+    - name: Simulate report generation (dry run)
+      ansible.builtin.debug:
+        msg: |
+          DRY RUN: Would generate patch management report at:
+          C:\ansible_patch_report_dry_run_{{ ansible_date_time.date }}.txt
+          
+          Report would contain:
+          - System info for {{ ansible_hostname }}
+          - {{ available_updates.found_update_count }} updates available
+          - Simulation of installation results
+          - Reboot requirements
+      when: dry_run
+
+    - name: Display patch management summary
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          PATCH MANAGEMENT SUMMARY {% if dry_run %}(DRY RUN){% endif %}
+          ========================================
+          System: {{ ansible_hostname }}
+          Mode: {{ 'DRY RUN - No changes made' if dry_run else 'LIVE RUN - Changes applied' }}
+          
+          {% if dry_run %}
+          Updates Available: {{ available_updates.found_update_count }}
+          Critical Updates (would install): {{ available_updates.updates | selectattr('categories', 'intersect', ['Security Updates', 'Critical Updates']) | list | length }}
+          Updates Failed: 0 (dry run)
+          
+          Hotfixes Before: {{ (current_patches.stdout | from_json).TotalHotfixes }}
+          Hotfixes After: {{ (current_patches.stdout | from_json).TotalHotfixes + available_updates.found_update_count }} (projected)
+          
+          Reboot Required: {{ reboot_needed.stdout.strip() == 'true' }}
+          Reboot Completed: Would reboot if required (dry run)
+          
+          Remaining Updates: 0 (projected after installation)
+          {% else %}
+          Updates Found: {{ available_updates.found_update_count }}
+          Critical Updates Installed: {{ critical_updates.installed_update_count | default(0) }}
+          Updates Failed: {{ critical_updates.failed_update_count | default(0) }}
+          
+          Hotfixes Before: {{ (current_patches.stdout | from_json).TotalHotfixes }}
+          Hotfixes After: {{ (post_update_patches.stdout | from_json).TotalHotfixes }}
+          
+          Reboot Required: {{ reboot_needed.stdout.strip() == 'true' }}
+          Reboot Completed: {{ update_reboot.changed | default(false) }}
+          
+          Remaining Updates: {{ remaining_updates.found_update_count }}
+          {% endif %}
+          
+          Report Location: C:\ansible_patch_report{% if dry_run %}_dry_run{% endif %}_{{ ansible_date_time.date }}.txt
+          ========================================
+
+    - name: Display next steps if updates remain
+      ansible.builtin.debug:
+        msg: |
+          {% if dry_run %}
+          DRY RUN COMPLETE: {{ available_updates.found_update_count }} updates available for installation.
+          To apply these updates, run this playbook again with dry_run=false or patch_dry_run=false.
+          {% else %}
+          ATTENTION: {{ remaining_updates.found_update_count }} updates still available.
+          Run this playbook again or schedule automatic updates to complete patching.
+          {% endif %}
+      when: (dry_run and available_updates.found_update_count > 0) or (not dry_run and remaining_updates.found_update_count > 0)
+
+    - name: Clean up temporary files
+      ansible.windows.win_file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - C:\ansible_patch_status.txt
+        - C:\ansible_update_log.txt
+      tags: cleanup
+      when: not dry_run
+
+    - name: Simulate cleanup of temporary files (dry run)
+      ansible.builtin.debug:
+        msg: |
+          DRY RUN: Would clean up temporary files:
+          - C:\ansible_patch_status.txt
+          - C:\ansible_update_log.txt
+      tags: cleanup
+      when: dry_run
+
+    - name: Display cleanup completion
+      ansible.builtin.debug:
+        msg: |
+          {% if dry_run %}
+          DRY RUN: Would clean up temporary files. Patch report would be retained at: C:\ansible_patch_report_dry_run_{{ ansible_date_time.date }}.txt
+          {% else %}
+          Temporary files cleaned up. Patch report retained at: C:\ansible_patch_report_{{ ansible_date_time.date }}.txt
+          {% endif %}
+      tags: cleanup

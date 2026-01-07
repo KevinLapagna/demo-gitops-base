@@ -1,2 +1,3 @@
 /untracked/
 .ansible/
+/ansible/execution-environments/context/

@@ -1,0 +1,6 @@
+---
+# Phase 1: Create Pull Request for VM Instance Type Change
+- ansible.builtin.import_playbook: vm-resize-pr.yaml
+
+# Phase 2: Wait for Checks and Merge Pull Request for VM Instance Type Change
+- ansible.builtin.import_playbook: vm-resize-merge-pr.yaml

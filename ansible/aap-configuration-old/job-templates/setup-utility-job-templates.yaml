@@ -1,0 +1,74 @@
+---
+- name: Create AAP Self-Update Job Template
+  ansible.controller.job_template:
+    name: "AAP Self-Update"
+    description: "Self-updating job template for AAP configuration with GitHub webhook integration"
+    job_type: "run"
+    inventory: "Localhost"
+    project: "{{ project_name }}"
+    playbook: "ansible/aap-configuration/configure-aap.yaml"
+    execution_environment: "{{ execution_environment_name }}"
+    organization: "{{ default_organization }}"
+    credentials:
+      - "ansible-vault-password"
+    webhook_service: "github"
+    webhook_credential: "github-webhook-token"
+    survey_enabled: false
+    survey_spec:
+      name: "Force Update Credentials Survey"
+      description: "Survey to determine if credentials should be force updated."
+      spec:
+        - question_name: "Force update credentials?"
+          question_description: "Do you want to force update the credentials?"
+          required: false
+          type: multiplechoice
+          choices:
+            - "yes"
+            - "no"
+          default: "no"
+          variable: "force_update_credentials_survey"
+  register: aap_self_update_template
+  tags: [job-templates, utility-templates]
+
+- name: Get webhook key directly from AAP API
+  ansible.builtin.uri:
+    url: "{{ controller_hostname }}/api/controller/v2/job_templates/{{ aap_self_update_template.id }}/webhook_key/"
+    method: GET
+    user: "{{ controller_username }}"
+    password: "{{ controller_password }}"
+    force_basic_auth: true
+    validate_certs: false
+  register: webhook_key_response
+  tags: [job-templates, utility-templates]
+
+- name: Extract webhook key
+  ansible.builtin.set_fact:
+    webhook_key: "{{ webhook_key_response.json.webhook_key | default('') }}"
+    job_template_id: "{{ aap_self_update_template.id }}"
+  tags: [job-templates, utility-templates]
+
+- name: Create GitHub webhook using API with webhook key
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ project_scm_url.split('/')[3] }}/{{ project_scm_url.split('/')[4].split('.')[0] }}/hooks"
+    method: POST
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      name: "web"
+      active: true
+      events:
+        - "push"
+      config:
+        url: "{{ controller_hostname }}/api/controller/v2/job_templates/{{ job_template_id }}/github/"
+        content_type: "json"
+        insecure_ssl: "0"
+        secret: "{{ webhook_key }}"
+    status_code: [201, 422]
+  register: github_webhook_result
+  failed_when:
+    - github_webhook_result.status == 422
+    - "'Hook already exists' not in (github_webhook_result.json.errors[0].message | default(''))"
+  when: webhook_key is defined and webhook_key | length > 0
+  tags: [job-templates, utility-templates]

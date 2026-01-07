@@ -1,0 +1,34 @@
+---
+- name: Create Windows Preparation Workflow Template
+  ansible.controller.workflow_job_template:
+    name: "Windows Preparation Workflow"
+    description: "Workflow to prepare Windows systems: ping test followed by parallel patch and software management"
+    organization: "{{ default_organization }}"
+    ask_limit_on_launch: true
+    limit: "os_type_Windows"
+
+- name: Create workflow node - Windows Ping Test
+  ansible.controller.workflow_job_template_node:
+    identifier: "Windows connectivity test"
+    workflow_job_template: "Windows Preparation Workflow"
+    unified_job_template: "Windows Management - Ping Test"
+
+- name: Create workflow node - Windows Patch Management
+  ansible.controller.workflow_job_template_node:
+    identifier: "Windows patch management"
+    workflow_job_template: "Windows Preparation Workflow"
+    unified_job_template: "Windows Management - Patch Management"
+
+- name: Create workflow node - Windows Software Management
+  ansible.controller.workflow_job_template_node:
+    identifier: "Windows software management"
+    workflow_job_template: "Windows Preparation Workflow"
+    unified_job_template: "Windows Management - Software Management"
+
+- name: Link workflow nodes - Ping Test to Patch Management (on success)
+  ansible.controller.workflow_job_template_node:
+    identifier: "Windows connectivity test"
+    workflow_job_template: "Windows Preparation Workflow"
+    success_nodes:
+      - "Windows patch management"
+      - "Windows software management"

@@ -1,0 +1,50 @@
+---
+# Shared setup tasks for VM workflows
+# Contains common setup tasks: request ID generation, tool checks, git clone and config, branch creation
+
+- name: Set request ID if not provided externally
+  ansible.builtin.set_fact:
+    req_id: "{{ req_id | default('REQ' + (999999999 | random | string).zfill(7)) }}"
+  tags: [always]
+
+- name: Ensure required tools are available
+  ansible.builtin.command: "{{ item }} --version"
+  register: tool_check
+  changed_when: false
+  failed_when: tool_check.rc != 0
+  loop:
+    - git
+  tags: [always]
+
+- name: Clone the repository with depth 1
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ clone_dest }}"
+    depth: 1
+    version: "{{ base_branch }}"
+  tags: [clone]
+
+- name: Configure Git user name and email for the repository
+  community.general.git_config:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    repo: "{{ clone_dest }}"
+    scope: local
+  loop:
+    - name: user.name
+      value: "{{ git_user_name }}"
+    - name: user.email
+      value: "{{ git_user_email }}"
+  tags: [git_config]
+
+- name: Create and checkout a new branch # noqa: command-instead-of-module
+  ansible.builtin.command: "git checkout -b {{ new_branch_name }}"
+  args:
+    chdir: "{{ clone_dest }}"
+  register: branch_creation
+  changed_when: branch_creation.rc == 0
+  failed_when:
+    - branch_creation.rc != 0
+    - "'A branch named' not in branch_creation.stderr"
+    - "'Switched to a new branch' not in branch_creation.stdout"
+  tags: [branch]

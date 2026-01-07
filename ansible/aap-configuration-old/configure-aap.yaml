@@ -1,0 +1,89 @@
+---
+- name: Configure AAP Controller
+  hosts: localhost
+  gather_facts: false
+  vars:
+    controller_hostname: "https://aap-01-aap.apps.cluster-rzg46.dynamic.redhatworkshops.io"
+    project_name: "Terraform HCP Demo"
+    project_scm_url: "https://github.com/KevinLapagna/ansible-hcp-demo.git"
+    execution_environment_name: "terraform-hcp"
+    execution_environment_image: "quay.io/klapagna/terraform-hcp:latest"
+    default_organization: "Default"
+    # Set to true to force update existing credentials (default: false for idempotency)
+    force_update_credentials: "{{ force_update_credentials_survey | default('no') == 'yes' }}"
+  vars_files:
+    - ../vars.yaml
+    - ../ami-mapping.yaml
+
+  module_defaults:
+    group/ansible.controller.controller:
+      controller_host: "{{ controller_hostname }}"
+      controller_username: "{{ controller_username }}"
+      controller_password: "{{ controller_password }}"
+      state: present
+
+  tasks:
+    - name: Generate AMI choices and region choices
+      ansible.builtin.set_fact:
+        ami_choices: "{{ ami_mappings | map(attribute='name') | list }}"
+        region_choices: "{{ ami_mappings | map(attribute='regions') | map('dict2items') | map('map', attribute='key') | flatten | unique | list }}"
+      tags: [always]
+
+    - name: Set default AMI and region
+      ansible.builtin.set_fact:
+        ami_default: "{{ ami_choices | first }}"
+        region_default: "{{ region_choices | first }}"
+      tags: [always]
+
+    - name: Setup Ansible Vault credentials
+      ansible.builtin.include_tasks: credentials/setup-vault.yaml
+      tags: [credentials, vault]
+
+    - name: Setup custom credential types
+      ansible.builtin.include_tasks: credentials/setup-custom-credential-types.yaml
+      tags: [credentials, credential-types]
+
+    - name: Setup credentials
+      ansible.builtin.include_tasks: credentials/setup-credentials.yaml
+      tags: [credentials]
+
+    - name: Setup execution environments
+      ansible.builtin.include_tasks: infrastructure/setup-execution-environments.yaml
+      tags: [infrastructure, execution-environments]
+
+    - name: Setup projects
+      ansible.builtin.include_tasks: infrastructure/setup-projects.yaml
+      tags: [infrastructure, projects]
+
+    - name: Setup inventories
+      ansible.builtin.include_tasks: infrastructure/setup-inventories.yaml
+      tags: [infrastructure, inventories]
+
+    - name: Setup VM job templates
+      ansible.builtin.include_tasks: job-templates/setup-vm-job-templates.yaml
+      tags: [job-templates, vm-templates]
+
+    - name: Setup utility job templates
+      ansible.builtin.include_tasks: job-templates/setup-utility-job-templates.yaml
+      tags: [job-templates, utility-templates]
+
+    - name: Setup HCP Terraform job templates
+      ansible.builtin.include_tasks: job-templates/setup-hcp-terraform.yaml
+      tags: [job-templates, hcp-terraform]
+
+    - name: Setup Linux management job templates
+      ansible.builtin.include_tasks: job-templates/setup-linux-management-job-templates.yaml
+      tags: [job-templates, linux-management]
+
+    - name: Setup Windows management job templates
+      ansible.builtin.include_tasks: job-templates/setup-windows-management-job-templates.yaml
+      tags: [job-templates, windows-management]
+
+    - name: Setup workflows
+      ansible.builtin.include_tasks: "{{ item }}"
+      tags: [workflows]
+      loop:
+        - workflows/setup-vm-workflow.yaml
+        - workflows/prepare-windows.yaml
+        - workflows/prepare-linux.yaml
+

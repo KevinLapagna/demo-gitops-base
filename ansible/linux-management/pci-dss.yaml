@@ -1,0 +1,50 @@
+---
+- name: Apply PCI-DSS compliance based on RHEL version
+  hosts: all
+  remote_user: ec2-user
+  become: true
+  gather_facts: true
+  
+  vars:
+    # Map RHEL major versions to their corresponding PCI-DSS roles
+    pci_dss_roles:
+      "7": "RedHatOfficial.rhel7-pci-dss"
+      "8": "RedHatOfficial.rhel8-pci-dss"
+      "9": "RedHatOfficial.rhel9-pci-dss"
+  
+  tasks:
+    - name: Verify we're running on a supported RHEL version
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "RedHat"
+          - ansible_distribution_major_version in pci_dss_roles.keys()
+        fail_msg: >
+          This playbook only supports RHEL 7, 8, or 9. 
+          Detected: {{ ansible_distribution }} {{ ansible_distribution_version }}
+        success_msg: >
+          Running on {{ ansible_distribution }} {{ ansible_distribution_version }}
+    
+    - name: Display selected PCI-DSS role
+      ansible.builtin.debug:
+        msg: >
+          Will apply PCI-DSS role: {{ pci_dss_roles[ansible_distribution_major_version] }}
+          for RHEL {{ ansible_distribution_major_version }}
+    
+    - name: Apply PCI-DSS compliance role
+      ansible.builtin.include_role:
+        name: "{{ pci_dss_roles[ansible_distribution_major_version] }}"
+      vars:
+        sudo_add_use_pty: false
+        sudo_custom_logfile: false
+        sudo_require_authentication: false
+        sudo_require_reauthentication: false
+        firewalld_loopback_traffic_restricted: false
+        firewalld_loopback_traffic_trusted: false
+      tags:
+        - apply_pci_dss
+    
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: >
+          PCI-DSS compliance configuration completed successfully
+          using {{ pci_dss_roles[ansible_distribution_major_version] }}

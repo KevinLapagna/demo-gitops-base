@@ -1,0 +1,37 @@
+ami_mappings:
+- name: Red Hat Enterprise Linux 9
+  osType: Linux
+  regions:
+    us-east-1: ami-0dfc569a8686b9320
+    eu-central-1: ami-0a8e2e55de614b2b1
+    eu-west-1: ami-0ca386c4436deaf15
+- name: Red Hat Enterprise Linux 8
+  osType: Linux
+  regions:
+    us-east-1: ami-0016d096e3a33d269
+    eu-central-1: ami-04d2689de89661361
+    eu-west-1: ami-0668123a3627b3b15
+- name: Windows Server 2022
+  osType: Windows
+  regions:
+    us-east-1: ami-0345f44fe05216fc4
+    eu-central-1: ami-09f31a65dd0bdca78
+    eu-west-1: ami-02560f59f725918ec
+- name: Fedora CoreOS 42
+  osType: Linux
+  regions:
+    us-east-1: ami-005185b6a5110ccc2
+    eu-central-1: ami-0112c7788d162feee
+    eu-west-1: ami-047796ba89066d0b6
+- name: CentOS Stream 9
+  osType: Linux
+  regions:
+    us-east-1: ami-03e718bac5d2ec021
+    eu-central-1: ami-06466ff1fe636784c
+    eu-west-1: ami-08ee9a1cc554acd20
+- name: Windows Server 2019
+  osType: Windows
+  regions:
+    us-east-1: ami-0ed9f8d63c9e8b95a
+    eu-central-1: ami-030a63c7124790810
+    eu-west-1: ami-01ec8eab934824e71

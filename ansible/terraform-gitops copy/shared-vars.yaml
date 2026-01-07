@@ -1,0 +1,30 @@
+---
+# Shared variables for VM workflows
+# This file contains common variables used by both create and remove workflows
+
+# GitHub Configuration - Update these values before running the playbook
+repo_url: "https://github.com/KevinLapagna/ansible-hcp-demo-infra.git"  # HTTPS URL of the GitHub repository
+
+# GitHub API configuration
+github_api_url: "https://api.github.com"
+repo_owner: "{{ repo_url.split('/')[3] }}"
+repo_name: "{{ repo_url.split('/')[4].replace('.git', '') }}"
+
+# Branch Configuration
+base_branch: "main"  # Base branch to create the new branch from (e.g., main, master, develop)
+
+# File Modification Configuration
+file_to_modify: "vms/instances.tf"  # Relative path to the file to modify in the repository
+
+# Git Commit Configuration
+git_user_name: "Kevin Lapagna"  # Git commit user name
+git_user_email: "klapagna@redhat.com"  # Git commit user email
+
+# Temporary directory for cloning
+clone_dest: "{{ ansible_env.HOME | default('/home/runner') }}/git-repo-{{ req_id }}" # Unique temporary directory with request ID
+
+# Integration wait time (seconds to wait for GitHub integrations like Terraform HCP to register)
+integration_wait_time: 10  # Adjust based on your integration response time
+
+# Default AWS region if not specified
+default_region: "us-east-1"  # Default region for AMI lookup when aws_region is not provided
