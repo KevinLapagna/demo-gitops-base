@@ -4,9 +4,9 @@ controller_inventories:
     state: "{{ state | default('present') }}"
     description: "Static localhost inventory for job templates"
     organization: "{{ default_organization }}"
-#   - name: "Terraform HCP VMs"
-#     state: "{{ state | default('present') }}"
-#     description: "Dynamic inventory sourced from Terraform HCP workspace"
-#     organization: "{{ default_organization }}"
+  - name: "Terraform HCP VMs"
+    state: "{{ state | default('present') }}"
+    description: "Dynamic inventory sourced from Terraform HCP workspace"
+    organization: "{{ default_organization }}"
 
 

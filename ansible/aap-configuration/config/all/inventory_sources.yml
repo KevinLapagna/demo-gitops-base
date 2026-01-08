@@ -1,30 +1,30 @@
 ---
-# controller_inventory_sources:
-#   - name: "Terraform HCP EC2 VMs"
-#     state: "{{ state | default('present') }}"
-#     description: "Dynamic inventory source for EC2 VMs from Terraform HCP workspace"
-#     inventory: "Terraform HCP VMs"
-#     source: "terraform"
-#     source_vars:
-#       plugin: cloud.terraform.terraform_state
-#       backend_type: remote
-#       search_child_modules: true
-#       compose:
-#         ansible_host: public_dns | default(public_ip, true) | default(private_ip, true)
-#       keyed_groups:
-#         - key: instance_state
-#           prefix: state
-#         - key: instance_type
-#           prefix: type
-#         - key: availability_zone
-#           prefix: az
-#         - key: tags.Environment | default('unknown')
-#           prefix: env
-#         - key: tags.OsType | default('unknown')
-#           prefix: os_type
-#     credential: "terraform-backend-config"
-#     execution_environment: "{{ execution_environment_name }}"
-#     update_on_launch: true
-#     overwrite: true
-#     overwrite_vars: true
-#     update_cache_timeout: 10
+controller_inventory_sources:
+  - name: "Terraform HCP EC2 VMs"
+    state: "{{ state | default('present') }}"
+    description: "Dynamic inventory source for EC2 VMs from Terraform HCP workspace"
+    inventory: "Terraform HCP VMs"
+    source: "terraform"
+    source_vars:
+      plugin: cloud.terraform.terraform_state
+      backend_type: remote
+      search_child_modules: true
+      compose:
+        ansible_host: public_dns | default(public_ip, true) | default(private_ip, true)
+      keyed_groups:
+        - key: instance_state
+          prefix: state
+        - key: instance_type
+          prefix: type
+        - key: availability_zone
+          prefix: az
+        - key: tags.Environment | default('unknown')
+          prefix: env
+        - key: tags.OsType | default('unknown')
+          prefix: os_type
+    credential: "terraform-backend-config"
+    execution_environment: "{{ execution_environment_name }}"
+    update_on_launch: true
+    overwrite: true
+    overwrite_vars: true
+    update_cache_timeout: 10

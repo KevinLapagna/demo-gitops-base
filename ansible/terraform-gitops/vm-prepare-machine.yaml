@@ -16,8 +16,8 @@
     - name: Set connection port and job template based on OS type # noqa: run-once[task]
       ansible.builtin.set_fact:
         connection_port: "{{ (os_type == 'Linux') | ternary(22, 5986) }}"
-        job_template: "{{ (os_type == 'Linux') | ternary('Linux Management - Ping Test', 'Windows Management - Ping Test') }}"
-        # job_template: "{{ (os_type == 'Linux') | ternary('Linux Preparation Workflow', 'Windows Preparation Workflow') }}"
+        # job_template: "{{ (os_type == 'Linux') | ternary('Linux Management - Ping Test', 'Windows Management - Ping Test') }}"
+        job_template: "{{ (os_type == 'Linux') | ternary('Linux Preparation Workflow', 'Windows Preparation Workflow') }}"
       vars:
         os_type: "{{ hostvars[new_instance_name]['tags']['OsType'] }}"
 
@@ -30,18 +30,18 @@
         state: started
       delegate_to: localhost
     
-    - name: Launch ping test job
-      ansible.controller.job_launch:
-        name: "{{ job_template }}"
-        limit: "{{ new_instance_name }}"
-        wait: true
-        organization: "Default"
-      delegate_to: localhost
-
     # - name: Launch ping test job
-    #   ansible.controller.workflow_launch:
+    #   ansible.controller.job_launch:
     #     name: "{{ job_template }}"
     #     limit: "{{ new_instance_name }}"
     #     wait: true
     #     organization: "Default"
     #   delegate_to: localhost
+
+    - name: Launch Preparation Workflow
+      ansible.controller.workflow_launch:
+        name: "{{ job_template }}"
+        limit: "{{ new_instance_name }}"
+        wait: true
+        organization: SummConnOrg
+      delegate_to: localhost

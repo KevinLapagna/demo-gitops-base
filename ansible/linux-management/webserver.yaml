@@ -1,0 +1,68 @@
+---
+- name: Install and configure Webserver
+  hosts: all
+  become: true
+  tasks:
+    - name: Install Apache HTTPD
+      ansible.builtin.dnf:
+        name: httpd
+        state: present
+
+    - name: Enable and start Apache HTTPD
+      ansible.builtin.service:
+        name: httpd
+        state: started
+        enabled: true
+
+    - name: Allow HTTP traffic in firewalld
+      ansible.posix.firewalld:
+        service: http
+        permanent: true
+        state: enabled
+        immediate: true
+
+    - name: Deploy stylish HTML page
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        content: |
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Welcome</title>
+              <style>
+                  body {
+                      display: flex;
+                      justify-content: center;
+                      align-items: center;
+                      height: 100vh;
+                      margin: 0;
+                      background: linear-gradient(135deg, #EE0000 0%, #7d0000 100%);
+                      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                      color: white;
+                  }
+                  .container {
+                      text-align: center;
+                      background: rgba(0, 0, 0, 0.2);
+                      padding: 4rem;
+                      border-radius: 20px;
+                      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+                      backdrop-filter: blur(8px);
+                      border: 1px solid rgba(255, 255, 255, 0.1);
+                  }
+                  h1 {
+                      font-size: 5rem;
+                      margin: 0;
+                      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+                      font-weight: 700;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>Hi everyone at Red Hat Summit Connect 2026!</h1>
+              </div>
+          </body>
+          </html>
+        mode: '0644'
