@@ -2,6 +2,8 @@
 - name: Install and configure Webserver
   hosts: all
   become: true
+  remote_user: ec2-user
+  gather_facts: true
   tasks:
     - name: Install Apache HTTPD
       ansible.builtin.dnf:
