@@ -1,5 +1,0 @@
-{
-  "yaml.schemas": {
-    "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/vars.json": "file:///home/kev/Documents/Code/demo-gitops-base/ansible/aap-configuration/config/all/workflows.yml"
-  }
-}

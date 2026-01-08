@@ -8,9 +8,9 @@
 
   module_defaults:
     group/ansible.controller.controller:
-      controller_host: "{{ controller_hostname }}"
-      controller_username: "{{ controller_username }}"
-      controller_password: "{{ controller_password }}"
+      controller_host: "{{ aap_hostname }}"
+      controller_username: "{{ aap_username }}"
+      controller_password: "{{ aap_password }}"
 
   tasks:
     - name: Set connection port and job template based on OS type # noqa: run-once[task]

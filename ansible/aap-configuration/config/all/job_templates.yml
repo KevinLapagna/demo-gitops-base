@@ -1,418 +1,418 @@
----
-controller_templates:
-  - name: "HCP Terraform Setup"
-    state: "{{ state | default('present') }}"
-    description: "Run HCP Terraform setup playbook"
-    job_type: "run"
-    inventory: "Localhost"
-    project: "{{ project_name }}"
-    playbook: "ansible/hcp-terraform/setup-hcp-terraform.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "ansible-vault-password"
-    notification_templates_started: []
-    notification_templates_success: []
-    notification_templates_error: []
+# ---
+# controller_templates:
+#   - name: "HCP Terraform Setup"
+#     state: "{{ state | default('present') }}"
+#     description: "Run HCP Terraform setup playbook"
+#     job_type: "run"
+#     inventory: "Localhost"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/hcp-terraform/setup-hcp-terraform.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "ansible-vault-password"
+#     notification_templates_started: []
+#     notification_templates_success: []
+#     notification_templates_error: []
 
-  - name: "Linux Management - Ping Test"
-    state: "{{ state | default('present') }}"
-    description: "Connectivity test for Terraform HCP EC2 VMs using ping module"
-    job_type: "run"
-    inventory: "Terraform HCP VMs"
-    project: "{{ project_name }}"
-    playbook: "ansible/linux-management/ping-test.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "ssh-machine-credential"
-    ask_limit_on_launch: true
-    ask_variables_on_launch: false
-    limit: "os_type_Linux"
+#   - name: "Linux Management - Ping Test"
+#     state: "{{ state | default('present') }}"
+#     description: "Connectivity test for Terraform HCP EC2 VMs using ping module"
+#     job_type: "run"
+#     inventory: "Terraform HCP VMs"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/linux-management/ping-test.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "ssh-machine-credential"
+#     ask_limit_on_launch: true
+#     ask_variables_on_launch: false
+#     limit: "os_type_Linux"
 
-  - name: "Linux Management - PCI-DSS Compliance"
-    state: "{{ state | default('present') }}"
-    description: "Apply PCI-DSS compliance configuration based on RHEL version (7, 8, or 9)"
-    job_type: "run"
-    inventory: "Terraform HCP VMs"
-    project: "{{ project_name }}"
-    playbook: "ansible/linux-management/pci-dss.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "ssh-machine-credential"
-    ask_limit_on_launch: true
-    ask_variables_on_launch: false
-    limit: "os_type_Linux"
-    verbosity: 1
+#   - name: "Linux Management - PCI-DSS Compliance"
+#     state: "{{ state | default('present') }}"
+#     description: "Apply PCI-DSS compliance configuration based on RHEL version (7, 8, or 9)"
+#     job_type: "run"
+#     inventory: "Terraform HCP VMs"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/linux-management/pci-dss.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "ssh-machine-credential"
+#     ask_limit_on_launch: true
+#     ask_variables_on_launch: false
+#     limit: "os_type_Linux"
+#     verbosity: 1
 
-  - name: "AAP Self-Update"
-    state: "{{ state | default('present') }}"
-    description: "Self-updating job template for AAP configuration with GitHub webhook integration"
-    job_type: "run"
-    inventory: "Localhost"
-    project: "{{ project_name }}"
-    playbook: "ansible/aap-configuration/playbook.yml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "ansible-vault-password"
-    webhook_service: "github"
-    webhook_credential: "github-webhook-token"
-    survey_enabled: false
-    survey_spec:
-      name: "Force Update Credentials Survey"
-      description: "Survey to determine if credentials should be force updated."
-      spec:
-        - question_name: "Force update credentials?"
-          question_description: "Do you want to force update the credentials?"
-          required: false
-          type: multiplechoice
-          choices:
-            - "yes"
-            - "no"
-          default: "no"
-          variable: "force_update_credentials_survey"
+#   - name: "AAP Self-Update"
+#     state: "{{ state | default('present') }}"
+#     description: "Self-updating job template for AAP configuration with GitHub webhook integration"
+#     job_type: "run"
+#     inventory: "Localhost"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/aap-configuration/playbook.yml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "ansible-vault-password"
+#     webhook_service: "github"
+#     webhook_credential: "github-webhook-token"
+#     survey_enabled: false
+#     survey_spec:
+#       name: "Force Update Credentials Survey"
+#       description: "Survey to determine if credentials should be force updated."
+#       spec:
+#         - question_name: "Force update credentials?"
+#           question_description: "Do you want to force update the credentials?"
+#           required: false
+#           type: multiplechoice
+#           choices:
+#             - "yes"
+#             - "no"
+#           default: "no"
+#           variable: "force_update_credentials_survey"
 
-  - name: "VM Pull Request - Create PR"
-    state: "{{ state | default('present') }}"
-    job_type: "run"
-    inventory: "Localhost"
-    project: "{{ project_name }}"
-    playbook: "ansible/terraform-gitops/vm-create-pr.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "github-token"
-    survey_enabled: true
-    survey_spec:
-      name: "VM Pull Request Parameters"
-      description: "Parameters for creating VM pull request"
-      spec:
-        - question_name: "VM AMI"
-          question_description: "Operating System for the VM"
-          required: true
-          type: "multiplechoice"
-          variable: "vm_ami"
-          choices: "{{ ami_choices }}"
-          default: "{{ ami_default }}"
-        - question_name: "VM Size"
-          question_description: "Size of the VM instance"
-          required: true
-          type: "multiplechoice"
-          variable: "vm_size"
-          choices:
-            - "t2.micro"
-            - "t2.small"
-            - "t2.medium"
-            - "t2.large"
-            - "t2.xlarge"
-            - "t3.micro"
-            - "t3.small"
-            - "t3.medium"
-            - "t3.large"
-            - "t3.xlarge"
-            - "t3.2xlarge"
-            - "m5.large"
-            - "m5.xlarge"
-            - "m5.2xlarge"
-            - "m5.4xlarge"
-            - "c5.large"
-            - "c5.xlarge"
-            - "c5.2xlarge"
-            - "c5.4xlarge"
-          default: "t2.micro"
-        - question_name: "AWS Region"
-          question_description: "AWS Region for the VM"
-          required: true
-          type: "multiplechoice"
-          variable: "aws_region"
-          choices: "{{ region_choices }}"
-          default: "{{ region_default }}"
-        - question_name: "Instance Name"
-          question_description: "Name of the VM instance (optional - will generate random name if empty)"
-          required: false
-          type: "text"
-          variable: "instance_name"
-          default: ""
-        - question_name: "Request ID"
-          question_description: "Unique identifier for this request"
-          required: true
-          type: "text"
-          variable: "req_id"
+#   - name: "VM Pull Request - Create PR"
+#     state: "{{ state | default('present') }}"
+#     job_type: "run"
+#     inventory: "Localhost"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/terraform-gitops/vm-create-pr.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "github-token"
+#     survey_enabled: true
+#     survey_spec:
+#       name: "VM Pull Request Parameters"
+#       description: "Parameters for creating VM pull request"
+#       spec:
+#         - question_name: "VM AMI"
+#           question_description: "Operating System for the VM"
+#           required: true
+#           type: "multiplechoice"
+#           variable: "vm_ami"
+#           choices: "{{ ami_choices }}"
+#           default: "{{ ami_default }}"
+#         - question_name: "VM Size"
+#           question_description: "Size of the VM instance"
+#           required: true
+#           type: "multiplechoice"
+#           variable: "vm_size"
+#           choices:
+#             - "t2.micro"
+#             - "t2.small"
+#             - "t2.medium"
+#             - "t2.large"
+#             - "t2.xlarge"
+#             - "t3.micro"
+#             - "t3.small"
+#             - "t3.medium"
+#             - "t3.large"
+#             - "t3.xlarge"
+#             - "t3.2xlarge"
+#             - "m5.large"
+#             - "m5.xlarge"
+#             - "m5.2xlarge"
+#             - "m5.4xlarge"
+#             - "c5.large"
+#             - "c5.xlarge"
+#             - "c5.2xlarge"
+#             - "c5.4xlarge"
+#           default: "t2.micro"
+#         - question_name: "AWS Region"
+#           question_description: "AWS Region for the VM"
+#           required: true
+#           type: "multiplechoice"
+#           variable: "aws_region"
+#           choices: "{{ region_choices }}"
+#           default: "{{ region_default }}"
+#         - question_name: "Instance Name"
+#           question_description: "Name of the VM instance (optional - will generate random name if empty)"
+#           required: false
+#           type: "text"
+#           variable: "instance_name"
+#           default: ""
+#         - question_name: "Request ID"
+#           question_description: "Unique identifier for this request"
+#           required: true
+#           type: "text"
+#           variable: "req_id"
 
-  - name: "VM Pull Request - Merge PR"
-    state: "{{ state | default('present') }}"
-    job_type: "run"
-    inventory: "Localhost"
-    project: "{{ project_name }}"
-    playbook: "ansible/terraform-gitops/vm-merge-pr.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "github-token"
-    ask_variables_on_launch: true
+#   - name: "VM Pull Request - Merge PR"
+#     state: "{{ state | default('present') }}"
+#     job_type: "run"
+#     inventory: "Localhost"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/terraform-gitops/vm-merge-pr.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "github-token"
+#     ask_variables_on_launch: true
 
-  - name: "HCP Terraform - Get Run Infos"
-    state: "{{ state | default('present') }}"
-    job_type: "run"
-    inventory: "Localhost"
-    project: "{{ project_name }}"
-    playbook: "ansible/hcp-terraform/get-run-infos.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "terraform-cloud-token"
-    ask_variables_on_launch: true
+#   - name: "HCP Terraform - Get Run Infos"
+#     state: "{{ state | default('present') }}"
+#     job_type: "run"
+#     inventory: "Localhost"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/hcp-terraform/get-run-infos.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "terraform-cloud-token"
+#     ask_variables_on_launch: true
 
-  - name: "VM Prepare Machine"
-    state: "{{ state | default('present') }}"
-    job_type: "run"
-    inventory: "Terraform HCP VMs"
-    project: "{{ project_name }}"
-    playbook: "ansible/terraform-gitops/vm-prepare-machine.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "ansible-vault-password"
-    survey_enabled: true
-    survey_spec:
-      name: "VM Prepare Machine Parameters"
-      description: "Parameters for preparing VM machine configuration"
-      spec:
-        - question_name: "Instance Name"
-          question_description: "Name of the VM instance to prepare"
-          required: false
-          type: "text"
-          variable: "new_instance_name"
+#   - name: "VM Prepare Machine"
+#     state: "{{ state | default('present') }}"
+#     job_type: "run"
+#     inventory: "Terraform HCP VMs"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/terraform-gitops/vm-prepare-machine.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "ansible-vault-password"
+#     survey_enabled: true
+#     survey_spec:
+#       name: "VM Prepare Machine Parameters"
+#       description: "Parameters for preparing VM machine configuration"
+#       spec:
+#         - question_name: "Instance Name"
+#           question_description: "Name of the VM instance to prepare"
+#           required: false
+#           type: "text"
+#           variable: "new_instance_name"
 
-  - name: "VM Resize Pull Request - Create PR"
-    state: "{{ state | default('present') }}"
-    job_type: "run"
-    inventory: "Localhost"
-    project: "{{ project_name }}"
-    playbook: "ansible/terraform-gitops/vm-resize-pr.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "github-token"
-    survey_enabled: true
-    survey_spec:
-      name: "VM Resize Parameters"
-      description: "Parameters for resizing VM instance type"
-      spec:
-        - question_name: "Instance Name to Resize"
-          question_description: "Name of the VM instance to resize (must match existing instance)"
-          required: true
-          type: "text"
-          variable: "instance_name_to_resize"
-        - question_name: "New Instance Type"
-          question_description: "New instance type for the VM"
-          required: true
-          type: "multiplechoice"
-          variable: "new_instance_type"
-          choices:
-            - "t2.micro"
-            - "t2.small"
-            - "t2.medium"
-            - "t2.large"
-            - "t2.xlarge"
-            - "t3.micro"
-            - "t3.small"
-            - "t3.medium"
-            - "t3.large"
-            - "t3.xlarge"
-            - "t3.2xlarge"
-            - "m5.large"
-            - "m5.xlarge"
-            - "m5.2xlarge"
-            - "m5.4xlarge"
-            - "c5.large"
-            - "c5.xlarge"
-            - "c5.2xlarge"
-            - "c5.4xlarge"
-          default: "t3.medium"
-        - question_name: "Request ID"
-          question_description: "Unique identifier for this request"
-          required: true
-          type: "text"
-          variable: "req_id"
+#   - name: "VM Resize Pull Request - Create PR"
+#     state: "{{ state | default('present') }}"
+#     job_type: "run"
+#     inventory: "Localhost"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/terraform-gitops/vm-resize-pr.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "github-token"
+#     survey_enabled: true
+#     survey_spec:
+#       name: "VM Resize Parameters"
+#       description: "Parameters for resizing VM instance type"
+#       spec:
+#         - question_name: "Instance Name to Resize"
+#           question_description: "Name of the VM instance to resize (must match existing instance)"
+#           required: true
+#           type: "text"
+#           variable: "instance_name_to_resize"
+#         - question_name: "New Instance Type"
+#           question_description: "New instance type for the VM"
+#           required: true
+#           type: "multiplechoice"
+#           variable: "new_instance_type"
+#           choices:
+#             - "t2.micro"
+#             - "t2.small"
+#             - "t2.medium"
+#             - "t2.large"
+#             - "t2.xlarge"
+#             - "t3.micro"
+#             - "t3.small"
+#             - "t3.medium"
+#             - "t3.large"
+#             - "t3.xlarge"
+#             - "t3.2xlarge"
+#             - "m5.large"
+#             - "m5.xlarge"
+#             - "m5.2xlarge"
+#             - "m5.4xlarge"
+#             - "c5.large"
+#             - "c5.xlarge"
+#             - "c5.2xlarge"
+#             - "c5.4xlarge"
+#           default: "t3.medium"
+#         - question_name: "Request ID"
+#           question_description: "Unique identifier for this request"
+#           required: true
+#           type: "text"
+#           variable: "req_id"
 
-  - name: "VM Resize Pull Request - Merge PR"
-    state: "{{ state | default('present') }}"
-    job_type: "run"
-    inventory: "Localhost"
-    project: "{{ project_name }}"
-    playbook: "ansible/terraform-gitops/vm-resize-merge-pr.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "github-token"
-    ask_variables_on_launch: true
+#   - name: "VM Resize Pull Request - Merge PR"
+#     state: "{{ state | default('present') }}"
+#     job_type: "run"
+#     inventory: "Localhost"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/terraform-gitops/vm-resize-merge-pr.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "github-token"
+#     ask_variables_on_launch: true
 
-  - name: "VM Remove Pull Request - Create PR"
-    state: "{{ state | default('present') }}"
-    job_type: "run"
-    inventory: "Localhost"
-    project: "{{ project_name }}"
-    playbook: "ansible/terraform-gitops/vm-remove-pr.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "github-token"
-    survey_enabled: true
-    survey_spec:
-      name: "VM Remove Parameters"
-      description: "Parameters for removing VM instance"
-      spec:
-        - question_name: "Instance Name to Remove"
-          question_description: "Name of the VM instance to remove (must match existing instance)"
-          required: true
-          type: "text"
-          variable: "instance_name_to_remove"
-        - question_name: "Request ID"
-          question_description: "Unique identifier for this request"
-          required: true
-          type: "text"
-          variable: "req_id"
+#   - name: "VM Remove Pull Request - Create PR"
+#     state: "{{ state | default('present') }}"
+#     job_type: "run"
+#     inventory: "Localhost"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/terraform-gitops/vm-remove-pr.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "github-token"
+#     survey_enabled: true
+#     survey_spec:
+#       name: "VM Remove Parameters"
+#       description: "Parameters for removing VM instance"
+#       spec:
+#         - question_name: "Instance Name to Remove"
+#           question_description: "Name of the VM instance to remove (must match existing instance)"
+#           required: true
+#           type: "text"
+#           variable: "instance_name_to_remove"
+#         - question_name: "Request ID"
+#           question_description: "Unique identifier for this request"
+#           required: true
+#           type: "text"
+#           variable: "req_id"
 
-  - name: "VM Remove Pull Request - Merge PR"
-    state: "{{ state | default('present') }}"
-    job_type: "run"
-    inventory: "Localhost"
-    project: "{{ project_name }}"
-    playbook: "ansible/terraform-gitops/vm-remove-merge-pr.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "github-token"
-    ask_variables_on_launch: true
+#   - name: "VM Remove Pull Request - Merge PR"
+#     state: "{{ state | default('present') }}"
+#     job_type: "run"
+#     inventory: "Localhost"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/terraform-gitops/vm-remove-merge-pr.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "github-token"
+#     ask_variables_on_launch: true
 
-  - name: "Windows Management - Ping Test"
-    state: "{{ state | default('present') }}"
-    description: "Connectivity test for Windows VMs using win_ping module"
-    job_type: "run"
-    inventory: "Terraform HCP VMs"
-    project: "{{ project_name }}"
-    playbook: "ansible/windows-management/windows-ping-test.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "windows-admin-credential"
-    limit: "os_type_Windows"
-    ask_limit_on_launch: true
+#   - name: "Windows Management - Ping Test"
+#     state: "{{ state | default('present') }}"
+#     description: "Connectivity test for Windows VMs using win_ping module"
+#     job_type: "run"
+#     inventory: "Terraform HCP VMs"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/windows-management/windows-ping-test.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "windows-admin-credential"
+#     limit: "os_type_Windows"
+#     ask_limit_on_launch: true
 
-  - name: "Windows Management - Patch Management"
-    state: "{{ state | default('present') }}"
-    description: "Patch management for Windows VMs using patch-management playbook"
-    job_type: "run"
-    inventory: "Terraform HCP VMs"
-    project: "{{ project_name }}"
-    playbook: "ansible/windows-management/patch-management.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "windows-admin-credential"
-    limit: "os_type_Windows"
-    ask_limit_on_launch: true
-    survey_enabled: true
-    survey_spec:
-      name: "Patch Management Survey"
-      description: "Control dry run mode for patch management."
-      spec:
-        - question_name: "Dry Run Mode"
-          question_description: "If enabled, no changes will be made. Only a simulation will be performed. Set to 'false' to apply updates."
-          required: true
-          type: multiplechoice
-          variable: patch_dry_run
-          choices:
-            - "true"
-            - "false"
-          default: "true"
+#   - name: "Windows Management - Patch Management"
+#     state: "{{ state | default('present') }}"
+#     description: "Patch management for Windows VMs using patch-management playbook"
+#     job_type: "run"
+#     inventory: "Terraform HCP VMs"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/windows-management/patch-management.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "windows-admin-credential"
+#     limit: "os_type_Windows"
+#     ask_limit_on_launch: true
+#     survey_enabled: true
+#     survey_spec:
+#       name: "Patch Management Survey"
+#       description: "Control dry run mode for patch management."
+#       spec:
+#         - question_name: "Dry Run Mode"
+#           question_description: "If enabled, no changes will be made. Only a simulation will be performed. Set to 'false' to apply updates."
+#           required: true
+#           type: multiplechoice
+#           variable: patch_dry_run
+#           choices:
+#             - "true"
+#             - "false"
+#           default: "true"
 
-  - name: "Windows Management - Software Management"
-    state: "{{ state | default('present') }}"
-    description: "Install and manage software on Windows VMs including Chrome, IIS, .NET, and Chocolatey packages"
-    job_type: "run"
-    inventory: "Terraform HCP VMs"
-    project: "{{ project_name }}"
-    playbook: "ansible/windows-management/software-management.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "windows-admin-credential"
-    limit: "os_type_Windows"
-    ask_limit_on_launch: true
-    survey_enabled: true
-    survey_spec:
-      name: "Software Management Survey"
-      description: "Control software installation options and reboot behavior."
-      spec:
-        - question_name: "Chrome MSI URL"
-          question_description: "URL for Google Chrome Enterprise MSI download. Leave default for latest version."
-          required: false
-          type: text
-          variable: chrome_msi_url
-          default: "https://dl.google.com/chrome/install/googlechromestandaloneenterprise64.msi"
-        - question_name: "Auto Reboot if Required"
-          question_description: "Automatically reboot the system if required after software installation."
-          required: true
-          type: multiplechoice
-          variable: ansible_reboot_if_required
-          choices:
-            - "true"
-            - "false"
-          default: "false"
-        - question_name: "Skip Chrome Installation"
-          question_description: "Skip Google Chrome installation."
-          required: true
-          type: multiplechoice
-          variable: skip_chrome
-          choices:
-            - "true"
-            - "false"
-          default: "false"
-        - question_name: "Skip IIS Installation"
-          question_description: "Skip IIS Web Server installation."
-          required: true
-          type: multiplechoice
-          variable: skip_iis
-          choices:
-            - "true"
-            - "false"
-          default: "false"
-        - question_name: "Skip Chocolatey Packages"
-          question_description: "Skip Chocolatey package installation (Notepad++, 7-Zip, Firefox)."
-          required: true
-          type: multiplechoice
-          variable: skip_chocolatey_packages
-          choices:
-            - "true"
-            - "false"
-          default: "false"
+#   - name: "Windows Management - Software Management"
+#     state: "{{ state | default('present') }}"
+#     description: "Install and manage software on Windows VMs including Chrome, IIS, .NET, and Chocolatey packages"
+#     job_type: "run"
+#     inventory: "Terraform HCP VMs"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/windows-management/software-management.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "windows-admin-credential"
+#     limit: "os_type_Windows"
+#     ask_limit_on_launch: true
+#     survey_enabled: true
+#     survey_spec:
+#       name: "Software Management Survey"
+#       description: "Control software installation options and reboot behavior."
+#       spec:
+#         - question_name: "Chrome MSI URL"
+#           question_description: "URL for Google Chrome Enterprise MSI download. Leave default for latest version."
+#           required: false
+#           type: text
+#           variable: chrome_msi_url
+#           default: "https://dl.google.com/chrome/install/googlechromestandaloneenterprise64.msi"
+#         - question_name: "Auto Reboot if Required"
+#           question_description: "Automatically reboot the system if required after software installation."
+#           required: true
+#           type: multiplechoice
+#           variable: ansible_reboot_if_required
+#           choices:
+#             - "true"
+#             - "false"
+#           default: "false"
+#         - question_name: "Skip Chrome Installation"
+#           question_description: "Skip Google Chrome installation."
+#           required: true
+#           type: multiplechoice
+#           variable: skip_chrome
+#           choices:
+#             - "true"
+#             - "false"
+#           default: "false"
+#         - question_name: "Skip IIS Installation"
+#           question_description: "Skip IIS Web Server installation."
+#           required: true
+#           type: multiplechoice
+#           variable: skip_iis
+#           choices:
+#             - "true"
+#             - "false"
+#           default: "false"
+#         - question_name: "Skip Chocolatey Packages"
+#           question_description: "Skip Chocolatey package installation (Notepad++, 7-Zip, Firefox)."
+#           required: true
+#           type: multiplechoice
+#           variable: skip_chocolatey_packages
+#           choices:
+#             - "true"
+#             - "false"
+#           default: "false"
 
-  - name: "Windows Management - Set Administrator Password"
-    state: "{{ state | default('present') }}"
-    description: "Reset the Administrator password on Windows VMs using the windows_admin_password variable"
-    job_type: "run"
-    inventory: "Terraform HCP VMs"
-    project: "{{ project_name }}"
-    playbook: "ansible/windows-management/system-set-password.yaml"
-    execution_environment: "{{ execution_environment_name }}"
-    organization: "{{ default_organization }}"
-    credentials:
-      - "windows-admin-credential"
-    limit: "os_type_Windows"
-    ask_limit_on_launch: true
-    survey_enabled: true
-    survey_spec:
-      name: "Administrator Password Reset Survey"
-      description: "Set the new Administrator password for Windows VMs."
-      spec:
-        - question_name: "New Administrator Password"
-          question_description: "Enter the new password for the Administrator account. Password should be complex and secure."
-          required: true
-          type: password
-          variable: windows_admin_password
-          min: 16
-          max: 127
+#   - name: "Windows Management - Set Administrator Password"
+#     state: "{{ state | default('present') }}"
+#     description: "Reset the Administrator password on Windows VMs using the windows_admin_password variable"
+#     job_type: "run"
+#     inventory: "Terraform HCP VMs"
+#     project: "{{ project_name }}"
+#     playbook: "ansible/windows-management/system-set-password.yaml"
+#     execution_environment: "{{ execution_environment_name }}"
+#     organization: "{{ default_organization }}"
+#     credentials:
+#       - "windows-admin-credential"
+#     limit: "os_type_Windows"
+#     ask_limit_on_launch: true
+#     survey_enabled: true
+#     survey_spec:
+#       name: "Administrator Password Reset Survey"
+#       description: "Set the new Administrator password for Windows VMs."
+#       spec:
+#         - question_name: "New Administrator Password"
+#           question_description: "Enter the new password for the Administrator account. Password should be complex and secure."
+#           required: true
+#           type: password
+#           variable: windows_admin_password
+#           min: 16
+#           max: 127

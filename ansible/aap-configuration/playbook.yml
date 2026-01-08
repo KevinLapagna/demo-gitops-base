@@ -4,7 +4,6 @@
   gather_facts: false
 
   vars:
-    controller_hostname: "https://aap-01-aap.apps.cluster-rzg46.dynamic.redhatworkshops.io"
     project_name: "Terraform HCP Demo"
     project_scm_url: "https://github.com/KevinLapagna/demo-gitops-base.git"
     execution_environment_name: "terraform-hcp"
@@ -12,18 +11,11 @@
     default_organization: "SummConnOrg"
     # Set to true to force update existing credentials (default: false for idempotency)
     force_update_credentials: "{{ force_update_credentials_survey | default('no') == 'yes' }}"
-    state: "present"  # or "absent" to remove all configuration
+    state: "present"  # "present" or "absent" to remove all configuration
 
   vars_files:
     - ../vars.yaml
     - ../ami-mapping.yaml
-
-  # module_defaults:
-  #   group/ansible.controller.controller:
-  #     controller_host: "{{ controller_hostname }}"
-  #     controller_username: "{{ controller_username }}"
-  #     controller_password: "{{ controller_password }}"
-  #     state: present
 
   tasks:
     - name: Generate AMI choices and region choices
