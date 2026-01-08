@@ -1,9 +1,9 @@
-# ---
-# controller_projects:
-#   - name: "{{ project_name }}"
-#     state: "{{ state | default('present') }}"
-#     scm_type: git
-#     scm_url: "{{ project_scm_url }}"
-#     default_environment: "{{ execution_environment_name }}"
-#     scm_update_on_launch: true
-#     organization: "{{ default_organization }}"
+---
+controller_projects:
+  - name: "{{ project_name }}"
+    state: "{{ state | default('present') }}"
+    scm_type: git
+    scm_url: "{{ project_scm_url }}"
+    default_environment: "{{ execution_environment_name }}"
+    scm_update_on_launch: true
+    organization: "{{ default_organization }}"

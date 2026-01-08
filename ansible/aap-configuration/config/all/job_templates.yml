@@ -1,5 +1,14 @@
-# ---
-# controller_templates:
+---
+controller_templates:
+  - name: "Simple SS Test Playbook"
+    state: "{{ state | default('present') }}"
+    description: "Run the simple SS test playbook"
+    job_type: "run"
+    inventory: "Localhost"
+    project: "{{ project_name }}"
+    playbook: "ansible/simple-ss-test/sstest.yaml"
+    organization: "{{ default_organization }}"
+
 #   - name: "HCP Terraform Setup"
 #     state: "{{ state | default('present') }}"
 #     description: "Run HCP Terraform setup playbook"
