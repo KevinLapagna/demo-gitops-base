@@ -16,12 +16,12 @@
         state: started
         enabled: true
 
-    - name: Allow HTTP traffic in firewalld
-      ansible.posix.firewalld:
-        service: http
-        permanent: true
-        state: enabled
-        immediate: true
+    # - name: Allow HTTP traffic in firewalld
+    #   ansible.posix.firewalld:
+    #     service: http
+    #     permanent: true
+    #     state: enabled
+    #     immediate: true
 
     - name: Deploy stylish HTML page
       ansible.builtin.copy:
