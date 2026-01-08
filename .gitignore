@@ -1,3 +1,5 @@
 /untracked/
 .ansible/
 /ansible/execution-environments/context/
+.vscode/
+ansible_vault_pass

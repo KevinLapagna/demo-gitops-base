@@ -12,6 +12,7 @@
     default_organization: "SummConnOrg"
     # Set to true to force update existing credentials (default: false for idempotency)
     force_update_credentials: "{{ force_update_credentials_survey | default('no') == 'yes' }}"
+    state: "present"  # or "absent" to remove all configuration
 
   vars_files:
     - ../vars.yaml

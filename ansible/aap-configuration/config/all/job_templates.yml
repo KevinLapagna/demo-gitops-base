@@ -1,6 +1,7 @@
 ---
 controller_templates:
   - name: "HCP Terraform Setup"
+    state: "{{ state | default('present') }}"
     description: "Run HCP Terraform setup playbook"
     job_type: "run"
     inventory: "Localhost"
@@ -15,6 +16,7 @@ controller_templates:
     notification_templates_error: []
 
   - name: "Linux Management - Ping Test"
+    state: "{{ state | default('present') }}"
     description: "Connectivity test for Terraform HCP EC2 VMs using ping module"
     job_type: "run"
     inventory: "Terraform HCP VMs"
@@ -29,6 +31,7 @@ controller_templates:
     limit: "os_type_Linux"
 
   - name: "Linux Management - PCI-DSS Compliance"
+    state: "{{ state | default('present') }}"
     description: "Apply PCI-DSS compliance configuration based on RHEL version (7, 8, or 9)"
     job_type: "run"
     inventory: "Terraform HCP VMs"
@@ -44,6 +47,7 @@ controller_templates:
     verbosity: 1
 
   - name: "AAP Self-Update"
+    state: "{{ state | default('present') }}"
     description: "Self-updating job template for AAP configuration with GitHub webhook integration"
     job_type: "run"
     inventory: "Localhost"
@@ -71,6 +75,7 @@ controller_templates:
           variable: "force_update_credentials_survey"
 
   - name: "VM Pull Request - Create PR"
+    state: "{{ state | default('present') }}"
     job_type: "run"
     inventory: "Localhost"
     project: "{{ project_name }}"
@@ -137,6 +142,7 @@ controller_templates:
           variable: "req_id"
 
   - name: "VM Pull Request - Merge PR"
+    state: "{{ state | default('present') }}"
     job_type: "run"
     inventory: "Localhost"
     project: "{{ project_name }}"
@@ -148,6 +154,7 @@ controller_templates:
     ask_variables_on_launch: true
 
   - name: "HCP Terraform - Get Run Infos"
+    state: "{{ state | default('present') }}"
     job_type: "run"
     inventory: "Localhost"
     project: "{{ project_name }}"
@@ -159,6 +166,7 @@ controller_templates:
     ask_variables_on_launch: true
 
   - name: "VM Prepare Machine"
+    state: "{{ state | default('present') }}"
     job_type: "run"
     inventory: "Terraform HCP VMs"
     project: "{{ project_name }}"
@@ -179,6 +187,7 @@ controller_templates:
           variable: "new_instance_name"
 
   - name: "VM Resize Pull Request - Create PR"
+    state: "{{ state | default('present') }}"
     job_type: "run"
     inventory: "Localhost"
     project: "{{ project_name }}"
@@ -230,6 +239,7 @@ controller_templates:
           variable: "req_id"
 
   - name: "VM Resize Pull Request - Merge PR"
+    state: "{{ state | default('present') }}"
     job_type: "run"
     inventory: "Localhost"
     project: "{{ project_name }}"
@@ -241,6 +251,7 @@ controller_templates:
     ask_variables_on_launch: true
 
   - name: "VM Remove Pull Request - Create PR"
+    state: "{{ state | default('present') }}"
     job_type: "run"
     inventory: "Localhost"
     project: "{{ project_name }}"
@@ -266,6 +277,7 @@ controller_templates:
           variable: "req_id"
 
   - name: "VM Remove Pull Request - Merge PR"
+    state: "{{ state | default('present') }}"
     job_type: "run"
     inventory: "Localhost"
     project: "{{ project_name }}"
@@ -277,6 +289,7 @@ controller_templates:
     ask_variables_on_launch: true
 
   - name: "Windows Management - Ping Test"
+    state: "{{ state | default('present') }}"
     description: "Connectivity test for Windows VMs using win_ping module"
     job_type: "run"
     inventory: "Terraform HCP VMs"
@@ -290,6 +303,7 @@ controller_templates:
     ask_limit_on_launch: true
 
   - name: "Windows Management - Patch Management"
+    state: "{{ state | default('present') }}"
     description: "Patch management for Windows VMs using patch-management playbook"
     job_type: "run"
     inventory: "Terraform HCP VMs"
@@ -317,6 +331,7 @@ controller_templates:
           default: "true"
 
   - name: "Windows Management - Software Management"
+    state: "{{ state | default('present') }}"
     description: "Install and manage software on Windows VMs including Chrome, IIS, .NET, and Chocolatey packages"
     job_type: "run"
     inventory: "Terraform HCP VMs"
@@ -377,6 +392,7 @@ controller_templates:
           default: "false"
 
   - name: "Windows Management - Set Administrator Password"
+    state: "{{ state | default('present') }}"
     description: "Reset the Administrator password on Windows VMs using the windows_admin_password variable"
     job_type: "run"
     inventory: "Terraform HCP VMs"

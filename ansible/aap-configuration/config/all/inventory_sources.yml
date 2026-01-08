@@ -1,6 +1,7 @@
 ---
 controller_inventory_sources:
   - name: "Terraform HCP EC2 VMs"
+    state: "{{ state | default('present') }}"
     description: "Dynamic inventory source for EC2 VMs from Terraform HCP workspace"
     inventory: "Terraform HCP VMs"
     source: "terraform"

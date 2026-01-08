@@ -1,6 +1,7 @@
 ---
 controller_projects:
   - name: "{{ project_name }}"
+    state: "{{ state | default('present') }}"
     scm_type: git
     scm_url: "{{ project_scm_url }}"
     default_environment: "{{ execution_environment_name }}"
