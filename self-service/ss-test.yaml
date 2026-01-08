@@ -1,0 +1,23 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: ansible-ss-test
+  title: Custom SS test template
+  description: Launch a simple Ansible Automation Platform job template that runs a self-service test playbook.
+spec:
+  owner: platform-team
+  type: service
+  parameters: {}
+  steps:
+    - id: launch-job
+      name: Launch Job
+      action: rhaap:launch-job-template
+      input:
+        token: ${{ parameters.AAP_TOKEN }}
+        values:
+          template: Simple SS Test Playbook
+          jobType: run
+  output:
+    links:
+      - title: Job Execution
+        url: ${{ steps['launch-job'].output.data.url }}

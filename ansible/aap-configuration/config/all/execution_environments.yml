@@ -1,6 +1,6 @@
-# ---
-# controller_execution_environments:
-#   - name: "{{ execution_environment_name }}"
-#     state: "{{ state | default('present') }}"
-#     image: "{{ execution_environment_image }}"
-#     pull: always
+---
+controller_execution_environments:
+  - name: "{{ execution_environment_name }}"
+    state: "{{ state | default('present') }}"
+    image: "{{ execution_environment_image }}"
+    pull: always
